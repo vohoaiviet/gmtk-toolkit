@@ -1,0 +1,608 @@
+
+$Header$
+
+Other things that need to be done, or just other ideas that might be
+incorporated into the package at some point.
+
+X Low level file parser should support
+   both integer and named pointers to
+   the parameters that they share.
+   (when they write out the parameters, they
+    should write out the form that was written in).
+    
+X simple +* equations in decision tree leaf nodes,
+  using variables vi and ci (e.g.,
+  v0, v1, v2, ... , and c0, c1, c2, ...) for values
+  and cardinalities of parent variables.
+  exs:  c0*v0 + v1
+        c0 + 1
+        3
+
+X add a MTCPT type, for deterministic cpt
+  which just points to one of the decision trees
+  in the DT table.
+
+X add error check message if two low level objects
+  have the same name and kill the program.
+   
+X discrete observed variables have only one cardinality,
+  card needs to be a vector.
+
+X Include gaussian objects for special situations.
+    index -1 corresponds to, with probability 1, gaussian
+    index -2 corresponds to, with probability 0, gaussian
+
+- An anytime clique finding algorithm that searches
+  for the best clique tree in an hour, day, weekend, etc.
+  Save the resulting clique (and model description) to
+  a file so that it can be reused multiple times.
+
+- Produce messages to the user saying that what the clique
+  sizes are and that they might want to adjust the 
+  structure to reduce clique sizes if they become too large.
+
+- the inference procedure should work both with clique chains and clique trees
+    - no, but basic data structures are ok.
+    - at some point, add tree stuff, for single frame applications
+
+- the inference procedure should work with disconnected networks
+
+X Allocate data structures for CPTS, etc. automatically, if not explicitly 
+  specified in a file. 
+
+- use namedobject for randomvariable and any other object that
+  has a string name
+
+X- include check to make sure that names for each section in parms are unique
+
+X- todo, make sure that chunk n:m is valid.
+
+X IMPORTANT: ability to train means and other dlinkmats in a dlinkmats structure
+  independently.
+
+- to through and start using setBasicAllocatedBit() on read, and add
+  assertions to that effect on all routines that need it.
+  (later) started doing this, but need to do a sweep to make sure all use
+  this mechanism.
+
+- IMPORTANT: look at and get rid of purify memory lost message
+     - write destructors
+
+- write sampling code
+
+X update make file so that -@ works for .o files.
+<
+X Check the results of all DT query() calls to make sure
+  the index it returns is valid. Report great error messages
+  if it doesn't.
+  Ultimately, some type of run-type check done once at the beginning
+  so this query doesn't need to take place.
+
+X if an object gets no probability, do something
+  more than just issuing a warning, like setting
+  to uniform probs, removing the component,
+  re-randomizing, or something.
+  done: set to previous values.
+
+X add a k-means mode for initialization.
+    - keep covariances at unity for a while.
+    - first iteration just use random assignments
+      (pick a random component who gives unity probability,
+       everyone else gives zero probability)
+    - done essentially since the splitting stuff
+      is working and we can start with a single Gaussian
+      and path counting.
+
+X Add gaussian split program
+
+X add linear BMM links
+
+- add non-linear BMM links
+
+X implement mixture component vanishing using the 
+  shared Dense1DPMF. If one GM decides that
+  its component should vanish based on a MCVR
+  then all of them should (and should check this
+  as well).
+
+X when reading in definitions for each utterance:
+    we could change the DTs with a particular name
+    (e.g., read in a DT file and have a read
+     mode that changes the pointer if it is there).
+    This would need to have objects that use DTs
+    use the integer index rater than the pointer directly.
+   Essentially done, DTs can now specify a file
+   containing a number of DTs one per segment.
+
+- Re-think the 1 DT per utterance stuff so that
+  we can seemlessly do parallelism.
+   (dt file indexes?)
+
+- rethink DT format numbering
+
+- add a 'fail' tag to DT leaves.
+
+X pass .str files through cpp before reading.
+
+X make sure that all files passed through cpp that
+  line numbering error messages is done right.
+
+X GMTK_GMParms::read(), keeps open all files
+  until the end. If it encounters the same name again,
+  it keeps track of where it was and continues reading.
+  Also, this should append rather than delete.
+
+X Allow the file parser to pass ascii files through cpp
+  (but not binary).
+
+- need to add a check that makes sure that the observation
+  range used by the cont. parents match that used by
+  the gaussian, perhaps add a length check as well.
+
+- Fri Jun 15 12:43:49 2001, 
+  MEMORY SAVINGS:
+  RandomVariables and their discrete and continuous children
+  have lots of redundant information when they are unrolled, thereby
+  wasting lots of memory. This could be changed so that
+  RV's keep a pointer to a RV common structure which when the RV is cloned
+  uses the same common data.
+
+- Short term: evaulate float/double for logp on Aurora
+
+- Long term: 
+     have a log space algorithm option
+
+- in file parser, add checks to make sure that all ints read in
+  are non-negative
+
+X change parser to keep track of multiple #include files via line directives
+
+X change sparse PMF so that it just contains a list
+  of values, and then a pointer to a dense pmf
+
+X get the parameter writing stuff finalized.
+   (get working after workshop, use simple global write in binary for now).
+
+X get MCVR working
+
+- if last component (or entire mixture) has no probability, 
+   either 1) die
+          2) do nothing, and do not change anything, reverting
+             to previous values.
+          2) force to uniform parameters
+          3) For now, **** force to impossible Gaussian *** 
+             and issue a loud warning.
+
+- prior counts
+    - need routine makeAccumulatorsPrior
+    - stand alone program for writing out accumulator file to be read in.
+
+X IMPORTANT: finish load/store/accumulate accumulators
+
+- Identify potential issues with release (ie.., bugs, slowness, obviously needed toolkit abilities,
+  thigns that are inconvenient, etc.).
+
+X add VCID everywhere.
+
+- allow deterministic relations to be enumerated out. in some cases, this is
+  easier than a decision tree. 
+
+X- add a binary/ascii parameter file conversion program.
+
+- export all internal program variables to command line (e.g., var floor, etc)
+
+X check on memory leak stuff
+
+- make sure that all gaussians use means/variances that are the right dimensionality
+  in read file.
+
+- rethink sparse CPT and make it such that sparseCPTs don't use the Dense1DPMF which
+  have become tailored to Gaussian mixtures (so lengths might change).
+   sparse CPTs should use dense CPTs somehow.
+
+- write C++ program to print number of free parameters for a system.
+
+- add simple multiplication onto decision tree leafs. (or better, make it
+  use real integer formulas with parens, etc.).
+
+- export the optional training stuff (i.e., don't train means, just covars, etc)
+  to command line.
+
+- create new objects, integer to name mappings
+  to map to decision tree leaves (corresponding to integers) to either
+     1) Gaussian mixture objects
+     2) Switching gaussian mixture objects
+     3) sparse PMFs
+
+X make sure that dlinkmatrix precompute is being
+  called once the global observation matrix is ready.
+
+- check for cardinalties in str file
+
+- make sure dlinks are checked somewhere for validity wrt a file
+
+- rething the EMable thing with the virtual functions, might
+  be a speedup there, esp. with emIncrement.
+
+- figure out a good way to get (save to disk) most viterbi assignment to 
+  mixture variables.
+
+- clean up source directories.
+
+- fix unrolling bug, where it is possible to get an assertion
+  failure because of unrolling a network but having  incompatible
+  RVs.
+
+- dlinks, make sure we do not point to self
+
+- decision trees, need to deal with the issue with reading them
+  in, parallelism, and so on.
+
+- implement other forms of mappings from RV 
+    - decision tree (done)
+    - hash table
+    - direct mapping 
+
+- write MDCPT parameters out in nice order with smart comments.
+
+- dlinkmats, normalize by "previous" covariance matrix, GEM alg
+
+- more triangulation procedures to reduce large clique sizes.
+
+- get switching parents working with triangulation
+
+- print message at start with largest clique (members, and upper bound on
+  joint state space)
+
+- reading ascii feature files should not be by line.
+
+X fix bug with small parallel chunks and accumulators being zero
+
+- add option to pass definitions to cpp with cpp arg.
+
+- add some way for DTs to refer to other DTs (i.e., a leaf
+  of a DT an continue on using another DT, to make sharing
+  easier, and save memory for big DTs).
+
+X option to floor variances when they are read in.
+  (for all programs including ascii/binary conversion)
+
+X ascii/binary conversion program can go both ways.
+
+- dynamic DTs, error messages should print cur name as well as base name. 
+
+- make DT such taht even if overlap exists, binsearch will occur.
+  (add option to search from the middle outward).
+  
+- add option to split/vanish top/bottom N mixtures irregardless of that.
+
+- for documentation:
+  - good idea to turn on conservative vanishing right after forced splitting.
+    This is to make sure that the splitting as a good idea. A forced
+    split might not be a good idea. The split Gaussian might 
+    dwindle away during training after a split, so keeping conservative
+    vanishing will keep that from happening (and will keep the
+    variances from being large).
+ 
+- option to turn off all warnings and notes.
+
+- accumulators pretty printed
+
+- don't allocate nextmean next covar until end of em iteration
+  since they are contained in component.
+  define a new bit in emable to support this (since need
+  to know the first time end of em thing is called).
+
+- ability to produce viterbi paths with mixture variables
+  using the gaussian mixture objects.
+
+- write a vector version of log(1 + exp(x))
+
+- clean up swap and end EM in gmparams
+
+- add command line option "-format file-type" to the main programs that
+  will explain the formats of the various files. For example, if there are
+  no gaussian mixtures, does the master file still have to mention them?
+
+- make DTS such that 'default' is not required, and that if
+  we have splits w/o a default, then it will have a run-time
+  error if we ever get a case that doesn't match the guys in the split
+
+- change range error messages to indcate where the error is
+  in the file, etc. where the error occurs (add an extra 
+  string argument, etc.).
+
+- check that there are no self loops in dlink strcutres
+
+- add startskip/endskip check
+
+- add link checks
+
+- when no-one left uses a component after vanishing,
+  get rid of it (add a 'used' bit perhaps in EMable.h).
+
+- make vanishing stuff vanish w/o a trace (i.e., unused
+  component is gone).
+
+- make more conise all the warning messages about vanishing
+  (don't need to report all of them, report single summary
+   message).   
+
+- check on error check messages, arguments out of order
+  in dlink matrix message??? (check with Geoff)
+
+- remove all the using_files stuff in GM.cc
+
+- clean up GM.cc with setExampleStream, and all of that.
+
+- Wed Aug  8 21:58:36 2001 it is still the case that
+  the gaussian dimensions are not being checked (since
+  we don't know DT leaf values at start time).
+  Once tables are in place, we can make sure
+  that the tables point to all matching gaussians
+  at start time.
+
+- write our own pre-processor (doesn't have space problem
+  that cpp has, and also will give standard #line/#file directives).
+  Perhaps in perl.
+
+- add tag to command line to add to all cloned objects.
+
+- include global missed increment count in accumulators.
+
+- arguments print default values
+
+- viterbi option so that it prints out max likelyhood of
+  one variable summing over all others.
+
+- clean up virtual functions in GMTK_EMable since some of
+  the EM ones need not be virtual.
+
+x fix arg description of beam
+
+- for docs, when stdfracs are zero for D and B, and
+  when we clonesharemeans, we might make a copy of
+  the gaussians when cloning that are exactly the
+  same as the parent leading to redundant copy of
+  Gaussians. Make sure to mention this in docs.
+
+- support no training names such as gmMx* for foobar*
+
+- state clustering, ala HTK, occupancy counts.
+
+- when segment is to short during training, skip it
+  rather than exiting with an error. 
+
+
+TODO:
+ - file formats (table & output file)
+ - record phone numbers
+ - src id
+ - icassp
+
+- accumulate multiple accumulators, give a list of accumulator
+  files when numeric range doesn't work to support accumulators
+   on different machines.
+
+- go through and making sure all the tying logic and not-training options work.
+
+
+- change internal class names from ??CPT to the SparseCPT, DenseCPT, etc.
+
+- create a name index type so that DT's can be used for the following.
+    - in mappings to GM indexes, DT leaf specifies a relative
+      offset in a table rather than in the global collection of GMs. 
+
+    - in MSCPTs, so that row elements of the MSCPT point to
+      offsets in a table for the 1dPDFs rather than in the global
+      table. Add entry in MSCPT definition in data file.
+
+- a way of adding counts to discrete CPTs without needing to specify an entire accumulator
+  file.
+
+- cpp program is determined by environment variable if it exists.
+
+- remove from parser the integer index stuff since string names exist.
+
+- remove all cin/cout and use printf/scanf
+
+- add -version flag to everything.
+
+
+- from Gang.
+1. When I want to print the hidden variables I met the following:
+
+suppose my varList file is the following
+   wordLatticeState
+   state
+   phoneTransition
+   wordTransition
+and my fileList file is the following
+   wordLatticeState.log
+   state.log
+   phoneTransition.log
+   wordTransition.log
+
+The output will put everything in the file wordLatticeState.log.  In that
+file the first integer will be wordLatticeState(0), second will be
+state(0), so on and so forth.  It didn't create other three files.
+
+2. suggestion
+
+in gmtkViterbi, cppCommand is very useful.  But I if I have a lot macros,
+the command line string will be very long.  I wonder whether is a way that
+this will take a file of macros.
+
+
+- add implicit approach to tutorial (from Yimin).
+
+- graphvis and grappa from at&t can visualize graphs very nicely.
+
+
+- 
+>.
+>WARNING: Ending EM iteration but 124 rows of MDCPT 'mannerMDCPT' had zero 
+>counts. Using previous values for those rows.
+>
+>Actually, one thing that would be useful would be if it were possible to have 
+>a "verbose" option where it tells you which rows had zero counts.
+>
+------------------------------------------------------------
+
+Tue Jun 18 17:47:44 2002
+> >(2)  Does GMTK allow you to use models that aren't strictly probabilistic?  
+> >E.g. if I wanted to weight the acoustic model score relative to the language 
+> >model, would I be able to do that?  I know that for some purposes I can "fool" 
+> >it, as I've done with the feature model, by having multiple observation 
+> >variables pointing to the same observations, but that is fairly limited.
+> 
+> Not at the moment, but that would be really easy to add (and I'd be happy
+> to do that for you).
+------------------------------------------------------------
+
+
+FIXED Wed Jun 19 19:27:26 2002
+
+Tue Jun 18 17:51:42 2002
+> >(1) I am training a new model, and am getting an error with the new version of gmtkEMtrain but not the old version.  The error occ
+> >urs when loading accumulators (but not when training without accumulators), and the message I get is:
+> >
+> >error in accumulating accumulators: /t/klivescu/aurora/articulatory5/MISC/emtrain.1.log:  
+> >EOF occurred in readDouble, file '/t/klivescu/aurora/articulatory5/MISC/acc_file_1.data': MDCPT load accums
+> >Loading accumulators from '/t/klivescu/aurora/articulatory5/MISC/acc_file_1.data'
+> 
+> Hmm. Are you using accumulators that were generated with the old
+> version with the new version? I don't think any of that code was
+> changed, but it is possible there might have been a bug introduced.
+
+No, the accumulators were generated with the new version.  I ran a
+few more experiments to try to figure this out, and it seems that
+it has to do with the size of the accumulator files--i.e. it only
+happens when the accum files have only a few utterances' worth of
+data.  E.g. if I train on 50 sentences broken up into 2 accum files,
+it's fine; but when broken up into 10, I get the error.  Perhaps it 
+is unhappy about some things not being observed in the accum files?
+
+> That would be good. Could you set up the bug on music and/or orca?
+
+I set up the files on both machines.  On both machines, everything is in
+~klivescu/aurora/articulatory5.  The NOTES file contains the command 
+lines for the old/new versions (sorry about all the long path names--
+the commands were copied directly from script-generated makefiles).  
+I think I made everything group-writable, so you should be able to 
+run the commands.
+
+Thanks!
+Karen
+
+------------------------------------------------------------
+FIXED Wed Jun 19 19:27:26 2002
+
+Tue Jun 18 17:51:16 2002
+	
+(3)  Not so much a question as just letting you know about another error 
+(different from the last one) that I got with the new version but not the old 
+one.  This one also occurred when combining accumulators.  The error message 
+was:
+
+Loading accumulators from '/homes/klivescu/aurora/articulatory7/MISC_NEW/acc_fi
+le_1.data'
+GMTK_MeanVector.cc:718: failed assertion `emEmAllocatedBitIsSet()'
+IOT/Abort trap (core dumped)
+
+This occurred while training a feature model with clustered features.  The only special thing I can think of about this model is that there were a number of Gaussians that I wasn't training (via -objsNotToTrain) because they correspond to impossible combinations of feature values.  I put all the files necessary to replicate the error on music in ~klivescu/aurora/articulatory7.  The NOTES file in that dir has the commands that I ran for both the old and new versions.
+
+-----------------------------------------------------------------
+FIXED Wed Jun 19 19:27:26 2002
+
+Wed Jun 19 11:34:25 2002
+
+At the moment, we are not checking for emAmTrainingBitIsSet() in
+GMTK_MeanVector.cc, GMTK_DlinkMatrix.cc, and GMTK_DiagCovarVector.cc
+in all of the EM routines, except for the swap routine (i.e., if the
+bit is not set, we don't swap). The reason for this is as follows.
+When sharing is not on, it is fine to check this bit before each EM
+routine, and if not set, do nothing. The problem is that with sharing,
+when we compute the updates for the shared means, we'll need the
+counts for not only the means but also for the covariances, and vice
+versa. A similar situation arrises when dlinks are involved. One
+solution might be to activate the accumulation if it is seen that
+sharing is occuring, the the problem with this is that, at the moment,
+we don't know if sharing is occuring until after emINcrement is called
+for the 2nd time on teh same mean object. If the bit is off the first
+time, we might miss the first accumulation.
+
+The solution now is to compute all the counts for the
+means/variances,etc. in all cases, even when the not_training bit is
+on, but this can be very wastefull. Another problem is that we need to
+save the accumulators when doing parallel training, even when the
+means are not being trained. This means that the training bit could be
+off, but we are accumulating accumulators for the shared object so the
+accumulators need to be saved even when the training bit is off.  This
+logic therefore needs to be rethought.
+
+-----------------------------------------------------------------
+
+- get automatic allocation of DenseCPTs working again.
+
+
+Tue Jul  2 19:35:29 2002
+- errors when reading in parameter files should be more informative
+  and perhaps say where in the parameeeeeer files the problem is.
+
+Tue Jul  2 19:38:36 2002
+- no need for warning about accumulatedProb = 0 for MTCPT
+
+Tue Jul  2 19:53:43 2002
+add to documentation something about normalization features
+and variance floor. Hints/tips on what to do here.
+  - possibly a diff. var floor for each feature vector element/
+
+XX Tue Jul  2 20:24:18 2002
+   - add a 'noscore' CPT so that we can do true conditional discrete
+     observations, similar to what can be done for discrete observations.
+
+Sun Jul 07 17:16:56 2002
+ - go through all parameter reading code to produce better error messages
+
+XX Sun Jul 07 17:16:56 2002
+   (e.g., realarray, and all of that, probably eliminate realarray class
+    as it's not doing much).
+
+Sun Jul 07 23:40:36 2002
+ - idea, for off-line triangulation heuristic, rather than
+   min-weight, choose "min dynamic weight." The dynamic
+   weight is obtained by running through all possible values
+   in the clique and choose the node to eliminate next which
+   results in the fewest number of clique instantiations.
+   Possible problem. Implementation of edges changes for  
+   each utterance, but it is only the decision trees that
+   change. 
+   Options:
+     1) Do this for one possible value of the DTs and 
+        hope that this works for the rest
+     2) do this for all, and average over the differnet
+        DT values (or take min of max, etc.)
+     3) have user provide "canonical" DT examples
+        that are used for triangulation.
+     4) 
+
+  Question of how much to expose user to triangulation issues:
+    Goal: try to make it possible for them to experiment with
+    better strategies w/o asking them to understand everything,
+    but still include it in the tutorial section.
+  
+Fri Jul 12 23:39:17 2002
+  - rewrite issue with di_xxCPT type of CPT objects being
+    declared. There should be one CPT object type used in
+    the program, and all guys inheret from it. Q: how  
+    to do the separate namespace for MDCPTs, MTCPTS, and MSCPTs?
+  - this also an issue for mixGaussians. Need to re-think all
+    of this.
+
+
+Sat Jul 13 02:05:27 2002
+ - ascii file reading should read in ascii files preprocessed
+   by CPP (optionally and by default). Also, the list of files 
+   itself should be processed by CPP.
+
