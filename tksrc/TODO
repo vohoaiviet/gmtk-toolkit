@@ -1,0 +1,145 @@
+
+$Header$
+
+Other things that need to be done, or just other ideas that might be
+incorporated into the package at some point.
+
+- Low level file parser should support
+   both integer and named pointers to
+   the parameters that they share.
+   (when they write out the parameters, they
+    should write out the form that was written in).
+    
+- simple +* equations in decision tree leaf nodes,
+  using variables vi and ci (e.g.,
+  v0, v1, v2, ... , and c0, c1, c2, ...) for values
+  and cardinalities of parent variables.
+  exs:  c0*v0 + v1
+        c0 + 1
+        3
+
+- add a MTCPT type, for deterministic cpt
+  which just points to one of the decision trees
+  in the DT table.
+
+- add error check message if two low level objects
+  have the same name and kill the program.
+
+   
+- discrete observed variables have only one cardinality,
+  card needs to be a vector.
+
+- Include gaussian objects for special situations.
+    index -1 corresponds to, with probability 1, gaussian
+    index -2 corresponds to, with probability 0, gaussian
+
+- An anytime clique finding algorithm that searches
+  for the best clique tree in an hour, day, weekend, etc.
+  Save the resulting clique (and model description) to
+  a file so that it can be reused multiple times.
+
+- Produce messages to the user saying that what the clique
+  sizes are and that they might want to adjust the 
+  structure to reduce clique sizes if they become too large.
+
+- Q: the inference procedure works both with clique chains
+  and clique trees???
+
+- Allocate data structures for CPTS, etc. automatically, if not explicitly 
+  specified in a file. 
+
+- use namedobject for randomvariable and any other object that
+  has a string name
+
+XXX- include check to make sure that names for each section in parms are unique
+
+XXX- todo, make sure that chunk n:m is valid.
+
+- ability to train means and other dlinkmats in a dlinkmats structure
+  independently.
+
+- to through and start using setBasicAllocatedBit() on read, and add
+  assertions, etc.
+
+- look at and get rid of purify memory lost message
+
+- update make file so that -@ works for .o files.
+
+- Check the results of all DT query() calls to make sure
+  the index it returns is valid. Report great error messages
+  if it doesn't.
+
+- if an object gets no probability, do something
+  more than just issuing a warning, like setting
+  to uniform probs, removing the component,
+  re-randomizing, or something.
+
+- add a k-means mode for initialization.
+    - keep covariances at unity for a while.
+    - first iteration just use random assignments
+      (pick a random component who gives unity probability,
+       everyone else gives zero probability)
+    - 
+
+
+- add linear BMM links
+
+- add non-linear BMM links
+
+- implement mixture component vanishing using the 
+  shared Dense1DPMF. If one GM decides that
+  its component should vanish based on a MCVR
+  then all of them should (and should check this
+  as well).
+
+- when reading in definitions for each utterance:
+    we could change the DTs with a particular name
+    (e.g., read in a DT file and have a read
+     mode that changes the pointer if it is there).
+    This would need to have objects that use DTs
+    use the integer index rater than the pointer directly.
+
+- add a 'fail' tag to DT leaves.
+
+- pass .str files through cpp before reading.
+  and make sure that file line numbering is done right.
+
+- GMTK_GMParms::read(), keeps open all files
+  until the end. If it encounters the same name again,
+  it keeps track of where it was and continues reading.
+  Also, this should append rather than delete.
+
+- Allow the file parser to pass ascii files through cpp
+  (but not binary).
+
+- need to add a check that makes sure that the observation
+  range used by the cont. parents match that used by
+  the gaussian, perhaps add a length check as well.
+
+- Fri Jun 15 12:43:49 2001, 
+  MEMORY SAVINGS:
+  RandomVariables and their discrete and continuous children
+  have lots of redundant information when they are unrolled, thereby
+  wasting lots of memory. This could be changed so that
+  RV's keep a pointer to a RV common structure which when the RV is cloned
+  uses the same common data.
+
+
+- in file parser, add checks to make sure that all ints read in
+  are non-negative
+
+- change parser to keep track of multiple #include files via line directives.
+
+
+- change sparse PMF so that it just contains a list
+  of values, and then a pointer to a dense pmf
+
+- get the parameter writing stuff finalized.
+
+- get MCVR working
+
+- if last component (or entire mixture) has no probability, 
+   either 1) die
+          2) do nothing, and do not change anything, reverting
+             to previous values.
+          2) force to uniform parameters.
