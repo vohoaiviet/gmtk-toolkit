@@ -1,0 +1,190 @@
+
+$Header$
+
+Other things that need to be done, or just other ideas that might be
+incorporated into the package at some point.
+
+X Low level file parser should support
+   both integer and named pointers to
+   the parameters that they share.
+   (when they write out the parameters, they
+    should write out the form that was written in).
+    
+X simple +* equations in decision tree leaf nodes,
+  using variables vi and ci (e.g.,
+  v0, v1, v2, ... , and c0, c1, c2, ...) for values
+  and cardinalities of parent variables.
+  exs:  c0*v0 + v1
+        c0 + 1
+        3
+
+X add a MTCPT type, for deterministic cpt
+  which just points to one of the decision trees
+  in the DT table.
+
+- add error check message if two low level objects
+  have the same name and kill the program.
+   
+X discrete observed variables have only one cardinality,
+  card needs to be a vector.
+
+X Include gaussian objects for special situations.
+    index -1 corresponds to, with probability 1, gaussian
+    index -2 corresponds to, with probability 0, gaussian
+
+- An anytime clique finding algorithm that searches
+  for the best clique tree in an hour, day, weekend, etc.
+  Save the resulting clique (and model description) to
+  a file so that it can be reused multiple times.
+
+- Produce messages to the user saying that what the clique
+  sizes are and that they might want to adjust the 
+  structure to reduce clique sizes if they become too large.
+
+- the inference procedure works both with clique chains and clique trees?
+    - no, but basic data structures are ok.
+    - at some point, add tree stuff, for single frame applications
+
+X Allocate data structures for CPTS, etc. automatically, if not explicitly 
+  specified in a file. 
+
+- use namedobject for randomvariable and any other object that
+  has a string name
+
+X- include check to make sure that names for each section in parms are unique
+
+X- todo, make sure that chunk n:m is valid.
+
+- IMPORTANT: ability to train means and other dlinkmats in a dlinkmats structure
+  independently.
+
+- to through and start using setBasicAllocatedBit() on read, and add
+  assertions to that effect on all routines that need it.
+
+- IMPORTANT: look at and get rid of purify memory lost message
+     - write destructors
+
+- write sampling code
+
+X update make file so that -@ works for .o files.
+
+X Check the results of all DT query() calls to make sure
+  the index it returns is valid. Report great error messages
+  if it doesn't.
+  Ultimately, some type of run-type check done once at the beginning
+  so this query doesn't need to take place.
+
+X if an object gets no probability, do something
+  more than just issuing a warning, like setting
+  to uniform probs, removing the component,
+  re-randomizing, or something.
+  done: set to previous values.
+
+- add a k-means mode for initialization.
+    - keep covariances at unity for a while.
+    - first iteration just use random assignments
+      (pick a random component who gives unity probability,
+       everyone else gives zero probability)
+
+- Add gaussian split program
+
+- add linear BMM links
+
+- add non-linear BMM links
+
+- implement mixture component vanishing using the 
+  shared Dense1DPMF. If one GM decides that
+  its component should vanish based on a MCVR
+  then all of them should (and should check this
+  as well).
+
+- when reading in definitions for each utterance:
+    we could change the DTs with a particular name
+    (e.g., read in a DT file and have a read
+     mode that changes the pointer if it is there).
+    This would need to have objects that use DTs
+    use the integer index rater than the pointer directly.
+
+- rethink DT format numbering
+
+- add a 'fail' tag to DT leaves.
+
+X pass .str files through cpp before reading.
+
+- make sure that all files passed through cpp that
+  line numbering error messages is done right.
+
+
+X GMTK_GMParms::read(), keeps open all files
+  until the end. If it encounters the same name again,
+  it keeps track of where it was and continues reading.
+  Also, this should append rather than delete.
+
+X Allow the file parser to pass ascii files through cpp
+  (but not binary).
+
+- need to add a check that makes sure that the observation
+  range used by the cont. parents match that used by
+  the gaussian, perhaps add a length check as well.
+
+- Fri Jun 15 12:43:49 2001, 
+  MEMORY SAVINGS:
+  RandomVariables and their discrete and continuous children
+  have lots of redundant information when they are unrolled, thereby
+  wasting lots of memory. This could be changed so that
+  RV's keep a pointer to a RV common structure which when the RV is cloned
+  uses the same common data.
+
+- Short term: evaulate float/double for logp on Aurora
+
+- Long term: 
+     have a log space algorithm option
+
+- in file parser, add checks to make sure that all ints read in
+  are non-negative
+
+- change parser to keep track of multiple #include files via line directives
+
+X change sparse PMF so that it just contains a list
+  of values, and then a pointer to a dense pmf
+
+- get the parameter writing stuff finalized.
+   (get working after workshop, use simple global write in binary for now).
+
+- get MCVR working
+
+- if last component (or entire mixture) has no probability, 
+   either 1) die
+          2) do nothing, and do not change anything, reverting
+             to previous values.
+          2) force to uniform parameters
+          3) For now, **** force to impossible Gaussian *** 
+             and issue a loud warning.
+
+
+- prior counts
+    - need routine makeAccumulatorsPrior
+    - stand alone program for writing out accumulator file to be read in.
+
+- IMPORTANT: finish load/store/accumulate accumulators
+
+- Identify potential issues with release (ie.., bugs, slowness, obviously needed toolkit abilities,
+  thigns that are inconvenient, etc.).
+
+X add VCID everywhere.
+
+- allow deterministic relations to be enumerated out. in some cases, this is
+  easier than a decision tree. 
+
+- add a binary/ascii parameter file conversion program.
+
+- export internal variables to command line changes
+
+- check on memory leak stuff
+
+- make sure that all gaussians use means/variances that are the right dimensionality
+  in read file.
+
+- rethink sparse CPT and make it such that sparseCPTs don't use the Dense1DPMF which
+  have become tailored to Gaussian mixtures (so lengths might change).
+   sparse CPTs should use dense CPTs somehow.
