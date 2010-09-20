@@ -1,0 +1,19 @@
+syntax: glob
+
+*.deps
+*.in
+*.a
+*.o
+*.Po
+*.tar.gz
+hgstamp.h
+Makefile
+aclocal.m4
+autom4te.cache
+config.{guess,h,log,status,sub}
+configure
+depcomp
+install-sh
+missing
+stamp-h1
+ylwrap
