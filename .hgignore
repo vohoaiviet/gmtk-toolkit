@@ -1,0 +1,23 @@
+syntax: glob
+
+*~
+*.deps
+{Makefile,config.h}.in
+*.a
+*.o
+*.Po
+*.tar.gz
+mitk/discrete-mi/ac_config.h
+mitk/discrete-mi/ac_config.h.in
+tksrc/GMTK_FileTokenizer.cc
+hgstamp.h
+Makefile
+aclocal.m4
+autom4te.cache
+config.{guess,h,log,status,sub}
+configure
+depcomp
+install-sh
+missing
+stamp-h1
+ylwrap
