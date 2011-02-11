@@ -13,6 +13,19 @@ AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
+AC_ARG_ENABLE([assertions],
+              [AS_HELP_STRING([--disable-assertions],
+                              [disable assertion checking @<:@default: no@:>@])],
+              [assertions=${enableval}], [assertions=yes])
+
+AC_ARG_ENABLE([model-checks],
+              [AS_HELP_STRING([--disable-model-checks],
+                              [disable run-time checks for models @<:@default: no@:>@])],
+              [model_checks=${enableval}], [model_checks=yes])
+
+AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
+AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -24,7 +37,7 @@ AC_CHECK_FILE([../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
     HGREVID=`hg id ..`  
-    printf "#define HGID \"$HGREVID\"\n" > hgstamp.h
+    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
   fi
 ],[
@@ -38,22 +51,28 @@ AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
 # Checks for libraries.
 
-AC_CHECK_PROG([HAVE_WXCONFIG],[wx-config],[yes])
-if test x"$HAVE_WXCONFIG" = x"yes"; then
-  AC_LANG_PUSH([C++])
-  wx_check_save_CXXFLAGS=${CXXFLAGS}
-  CXXFLAGS=`wx-config --cxxflags`
-  wx_check_save_LDFLAGS=${LDFLAGS}
-  LDFLAGS=`wx-config --libs`
-  AC_LINK_IFELSE([
-    AC_LANG_PROGRAM([#include "wx/wx.h"],[wxString s("foo");s.Capitalize()])],
-    AC_SUBST([HAVE_WXWIDGETS],[yes]),
-    AC_MSG_WARN(
-      [wx-config found but not wxWidgets >= 2.9. gmtkViz will not be built.])
-  )
-  LDFLAGS=${wx_check_save_LDFLAGS}
-  CXXFLAGS=${wx_check_save_CXXFLAGS}
-  AC_LANG_POP([C++])
+AC_ARG_ENABLE([gmtkViz], 
+              [AS_HELP_STRING([--disable-gmtkViz],
+                              [disable gmtkViz @<:@default: no@:>@])],
+              [gmtkViz=${enableval}], [gmtkViz=yes])
+if test x"$gmtkViz" = x"yes"; then
+   AC_CHECK_PROG([HAVE_WXCONFIG],[wx-config],[yes])
+   if test x"$HAVE_WXCONFIG" = x"yes"; then
+     AC_LANG_PUSH([C++])
+     wx_check_save_CXXFLAGS=${CXXFLAGS}
+     CXXFLAGS=`wx-config --cxxflags`
+     wx_check_save_LDFLAGS=${LDFLAGS}
+     LDFLAGS=`wx-config --libs`
+     AC_LINK_IFELSE([AC_LANG_PROGRAM([#include "wx/wx.h"],
+                                     [wxString s("foo");s.Capitalize()])],
+        AC_SUBST([HAVE_WXWIDGETS],[yes]),
+        AC_MSG_WARN(
+	 [wx-config found but not wxWidgets >= 2.9. gmtkViz will not be built.])
+     )
+     LDFLAGS=${wx_check_save_LDFLAGS}
+     CXXFLAGS=${wx_check_save_CXXFLAGS}
+     AC_LANG_POP([C++])
+   fi
 fi
 if test x"$HAVE_WXWIDGETS" = x"yes"; then
    AC_SUBST([GMTKVIZ],[gmtkViz])
