@@ -2505,11 +2505,38 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
     }
   }
 
-  // if (numCliqueValuesUsed == 278664)
-  // printCliqueEntries(sharedStructure,stdout,NULL,false,false);
+  // In case that USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL is defined:
+  // Note that if you want to print the entries here before pruning,
+  // and if you want to call printing in the form of say:
+  //
+  //     printCliqueEntries(sharedStructure,stdout,NULL,false,false);
+  // 
+  // then you will need to change the printCliqueEntries routine to
+  // not use the perment shared structures.
 
-  // we prune here right away.
+
+  // Now, we do pruning here. If the temporary clique value pool is
+  // being used, we prune here, *before* we copy things out of the
+  // temporary pool so that pruned entries are not inserted into
+  // permanent locations.
   ceDoAllPruning(origin,maxCEValue);
+
+
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+  // Now that pruning has occured, we copy things out of the pool,
+  // into the permanent shared pool locaion.  
+  // IMPORTANT: once this code is run, it means
+  // that we cannot call ceDoAllPruning() any further
+  //  (is this true? Indeed, if we prune again, the state
+  //  won't be removed from the shared arrays, but is there
+  //  an inherent harm in doing so? Perhaps not). 
+  if (origin.packer.packedLen() > IMC_NWWOH) {
+    // finally, insert surviving entries into global shared pool.
+    insertLocalCliqueValuesIntoSharedPool(origin);
+    // and free up the local buffer.
+    origin.temporaryCliqueValuePool.resize(CLIQUE_VALUE_HOLDER_STARTING_SIZE*origin.packer.packedLen());
+  }
+#endif
 
   if (origin.normalizeScoreEachClique != 1.0)
     ceDoCliqueScoreNormalization(sharedStructure);
@@ -4588,17 +4615,6 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
   }
 
-
-#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
-  // if this code is enabled, it means that we cannot call pruning more than once.
-  if (origin.packer.packedLen() > IMC_NWWOH) {
-    // finally, insert surviving entries into global shared pool.
-    insertLocalCliqueValuesIntoSharedPool(origin);
-    // and free up the local buffer.
-    origin.temporaryCliqueValuePool.resize(CLIQUE_VALUE_HOLDER_STARTING_SIZE*origin.packer.packedLen());
-  }
-#endif
-
 }
 
 void 
@@ -5810,56 +5826,6 @@ cliqueEntropy()
 
 
 
-/*-
- *-----------------------------------------------------------------------
- * MaxCliqueTable::cliqueDiversity()
- *
- *    Compute the clique diversity of the clique.
- *
- * Preconditions:
- *      Clique data structures must be created.
- *
- * Postconditions:
- *      none
- *
- * Side Effects:
- *      None
- *
- * Results:
- *     sum of probabilities of all elements in the clique.
- *
- *-----------------------------------------------------------------------
- */
-double
-MaxCliqueTable::
-cliqueDiversity(MaxClique& origin)
-{
-  double D = 0.0;
-  if (numCliqueValuesUsed > 0) {
-    for (unsigned i=1;i<numCliqueValuesUsed;i++) {
-      for (unsigned j=i;j<numCliqueValuesUsed;j++) {
-	unsigned* i_key_p; 
-	unsigned* j_key_p; 
-#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
-	i_key_p =
-	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[i].ival];
-	j_key_p =
-	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[j].ival];
-#else
-	i_key_p = (unsigned*)cliqueValues.ptr[i].ptr;
-	j_key_p = (unsigned*)cliqueValues.ptr[j].ptr;
-#endif	
-	double cur_dist = 
-	  origin.packer.use_distance(i_key_p,j_key_p);
-	D += cur_dist;
-      }
-    }
-  }
-  D = D /(  ((double)numCliqueValuesUsed)* ((double)(numCliqueValuesUsed+1))/2.0 );
-  return D;
-}
-
-
 
 
 /*-
@@ -6027,6 +5993,69 @@ maxProb()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxCliqueTable::cliqueDiversity()
+ *
+ *    Compute the clique diversity of the clique.
+ *
+ * Preconditions:
+ *      Clique data structures must be created. In the default version
+ *      of this routine, all of the clique entries must have been
+ *      removed from the temporary local clique value pool and placed
+ *      in the permanent arrays before calling this routine. But you
+ *      can, by change the #define below if you want to, use this
+ *      routine for debugging before the tmp entries have been copied
+ *      out (which might be useful to print before pruning has
+ *      occured).
+ *
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     sum of probabilities of all elements in the clique.
+ *
+ *-----------------------------------------------------------------------
+ */
+double
+MaxCliqueTable::
+cliqueDiversity(MaxClique& origin)
+{
+  double D = 0.0;
+  if (numCliqueValuesUsed > 0) {
+    for (unsigned i=1;i<numCliqueValuesUsed;i++) {
+      for (unsigned j=i;j<numCliqueValuesUsed;j++) {
+	unsigned* i_key_p; 
+	unsigned* j_key_p; 
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(CLIQUE_DIVERSITY_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+	// then we print the entries that are currently stored in the temporary clique value pool.
+	// This might be useful for debugging to print the entries before they are copied into their
+	// permanent locations (i.e., if we wish to print before pruning has occured).
+	i_key_p =
+	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[i].ival];
+	j_key_p =
+	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[j].ival];
+#else
+	i_key_p = (unsigned*)cliqueValues.ptr[i].ptr;
+	j_key_p = (unsigned*)cliqueValues.ptr[j].ptr;
+#endif	
+	double cur_dist = 
+	  origin.packer.use_distance(i_key_p,j_key_p);
+	D += cur_dist;
+      }
+    }
+  }
+  D = D /(  ((double)numCliqueValuesUsed)* ((double)(numCliqueValuesUsed+1))/2.0 );
+  return D;
+}
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * MaxCliqueTable::printCliqueEntries()
@@ -6039,7 +6068,16 @@ maxProb()
  *    probabilities over the variables in the clique.
  *
  * Preconditions:
- *      Clique data structures must be created.
+ *
+ *      Clique data structures must be created. In the default version
+ *      of this routine, all of the clique entries must have been
+ *      removed from the temporary local clique value pool and placed
+ *      in the permanent arrays before calling this routine. But you
+ *      can, by change the #define below if you want to, use this
+ *      routine for debugging before the tmp entries have been copied
+ *      out (which might be useful to print before pruning has
+ *      occured).
+ *
  *
  * Postconditions:
  *      none
@@ -6065,9 +6103,8 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
   if (str != NULL)
     fprintf(f,"%s ",str);
   
-  // TODO: also have a cliqueDiversity routine that can compute the
-  // variability/diversity in a clique in terms of its random
-  // variables.
+  // TODO: might also want to optionally print the cliqueDiversity() of this
+  // clique as well as the entropy.
 
   fprintf(f,"Printing Clique with %d variables, %d entries, H=%e\n",
 	  sharedStructure.fNodes.size(),numCliqueValuesUsed,cliqueEntropy());
@@ -6086,10 +6123,14 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
       } else {
 
-#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+	// then we print the entries that are currently stored in the temporary clique value pool.
+	// This might be useful for debugging to print the entries before they are copied into their
+	// permanent locations (i.e., if we wish to print before pruning has occured).
 	origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[cvn].ival],
 			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
 #else
+        // print the entries assuming they are stored in their final locations.
 	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
 #endif
