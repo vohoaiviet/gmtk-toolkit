@@ -166,7 +166,7 @@ void iDataStreamFile::initialize()
 	cppCommand = cppCommand + (" ") + path;
 
 	// printf("cppCommand = (%s)\n",cppCommand.c_str());
-	fh = ::popen(cppCommand.c_str(),"r");    
+	fh = ::popen(cppCommand.c_str(),"r");
 	if (fh == NULL)
 	  error("ERROR, can't open file stream from (%s)",_name);
       }
@@ -219,7 +219,9 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
     cppCommandOptions = _cppCommandOptions;
   }
 #endif
-  initialize();}
+  piped = false;
+  initialize();
+}
 
 iDataStreamFile::~iDataStreamFile()
 {
@@ -229,7 +231,8 @@ iDataStreamFile::~iDataStreamFile()
     // that closing a pipe when not at the end causes an error (e.g., mac osx)
     freadUntilEOF(fh);
     if (::pclose(fh) != 0) {
-      warning("WARNING: Can't close pipe '%s %s'.",CPP_Command(),fileName());
+      int err = errno;
+      warning("WARNING: Can't close pipe '%s %s':  %s.",CPP_Command(),fileName(),strerror(err));
     }
   } else {
     if (fclose(fh) != 0) {
