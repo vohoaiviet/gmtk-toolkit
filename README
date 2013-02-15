@@ -1,0 +1,120 @@
+ 
+======================================================================
+======================================================================
+======================================================================
+
+
+			 How to compile GMTK
+
+			  Updated: March, 2011
+
+
+GMTK uses a simple GNU Autotools build process. The familiar
+
+   ./configure && make && make install
+
+should work on the target platforms (Linux, OSX, and Windows/Cygwin).
+Other POSIX-like platforms might work too. See
+
+   ./configure --help
+
+for full information on the available configure options.
+
+
+gmtkViz requires wxWidgets 2.9.1 or later. On most platforms, it
+will build automatically if a suitable wx-config in in your PATH.
+To build gmtkViz on OSX, use a 32-bit wxOSX_CARBON build of 
+wxWidgets and do:
+
+   ./configure CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32 && make && make install
+
+Note that the main development compiler used for GMTK is GNU
+gcc/g++. Other compilers have also been tested (such as the Intel C++
+compiler) but not nearly as extensively as gcc/g++. In the below, we
+will assume gcc/g++.
+
+GMTK should compile with almost no warnings with the development
+compilers. On some platforms it may complain that %lld or %llu are
+not ISO C++. There's also a warning in GMTK_FNGramCPT.cc that we
+are looking into.
+
+There are a few variables that control the flags passed to the C++
+compiler. You may want to specify them to the make command, though
+they all have reasonable defaults. For example, you might try
+
+  make DEBUGFLAGS=-ggdb3 OPTFLAGS="-O3 -march=pentium4 -mfpmath=sse -ffast-math"
+
+The default is just generic optimization, but you might want to use
+something more aggressive (which can lead to significant speedups, but
+also are such that if you run on the wrong architecture will produce
+illegal instructions and/or a bus error).
+
+You can also change the version of gcc/g++ that you use to compile 
+by specifying CC/CXX to the make command.
+    
+     make CC=gcc-4.2 CXX=g++-4.2
+   
+and if you wish to turn off all optimization, then do:
+
+     make OPTFLAGS= XOPTFLAGS=
+
+Turning off all optimizations will lead to significantly slower
+executation, but is very useful when debugging the code.
+
+If you wish to compile a 64-bit version, then do:
+
+     make CFLAGS=-m64 CXXFLAGS=-m64
+
+(although keep in mind that 64-bit GMTK has not been as extensively tested
+as when running under 32-bit mode).
+
+If you wish to create static binaries (i.e., ones that are not dependent 
+on shared libraries), then assuming you've got the static libraries 
+installed, do
+
+    ./configure --disable-gmtkViz && make LDFLAGS=-static
+
+Note, many of the above options can be combined.
+
+Don't forget to read the documentation. It can be found at:
+
+       http://ssli.ee.washington.edu/~bilmes/gmtk
+
+and will be updated in the near future. To build gmtkViz (which is a
+graphical user interface for taking an existing graph structure
+specified using a .str file, and quickly producing a nice layout of
+that graph, and a resulting .eps/.pdf file for, say, inclusion in a
+paper), see the following documentation:
+
+https://j.ee.washington.edu/trac/gmtk/wiki/GmtkVizBuildHowTo
+
+gmtkViz is only built if a suitable wxWidgets (http://www.wxwidgets.org/) 
+installation (version 2.9 or later) is detected at configure time. 
+The "Print to EPS file" option under the file menu does not work with
+wxWidgets 2.9.2 or earlier due to bugs in wxWidgets. You can use the
+native OS print-to-file driver to produce a PDF file, but on Linux it
+seems to generate bitmap rather than vector output. Note that wxWidgets
+is the only external dependence needed to compile any of GMTK.
+
+Also note that the default linker configuration on recent Ubuntu Linux
+distributions may cause problems building wxWidgets or gmtkViz. Doing
+the build with
+
+	make CXXFLAGS="-Wl,--no-as-needed"
+
+may fix the problem.
+
+enjoy!!
+
+	-- Jeff Bilmes
+
+     For general questions:
+        -- gmtk-users@ssli.ee.washington.edu
+        -- gmtk-users-request@ssli.ee.washington.edu
+
+     For bugs:
+        -- https://lungs.ee.washington.edu/trac/gmtk/newticket
+
+   
+======================================================================
+======================================================================
