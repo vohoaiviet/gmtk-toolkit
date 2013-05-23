@@ -1,7 +1,14 @@
 #ifndef GMTK_OBSINITMG_H
 #define GMTK_OBSINITMG_H
 
-void initmg(ObservationMatrix* obs_mat,
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
+#include "GMTK_FileSource.h"
+
+void initmg(FileSource *obs_mat,
 	    FILE *out_fp,
 	    Range& srrng,
 	    Range& cfrrng,

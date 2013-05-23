@@ -1,4 +1,11 @@
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
 #include <iostream>
+#include <math.h>
 #include "mixNormalCollection.h"
 #include "string.h"
 

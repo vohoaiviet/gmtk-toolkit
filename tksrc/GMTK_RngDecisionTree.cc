@@ -4,17 +4,19 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu> & Chris Bartels <bartels@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
+
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
 
 #include <assert.h>
 #include <ctype.h>
@@ -25,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sstream>
 #include <vector>
 
 #include "error.h"
@@ -38,15 +41,42 @@
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_RngDecisionTree.h"
 
-
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::getSourceString()
+ *      For iterable DTs, returns "dtFileName(curName) #dtNum"
+ *      For non-iterable, returns just dtFileName
+ *
+ * Preconditions:
+ *      DT read in from file
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      returns the origin of the DT 
+ *-----------------------------------------------------------------------
+ */
+string 
+RngDecisionTree::getSourceString() {
+  string dtSourceString; 
+  if (iterable()) { 
+    dtSourceString.append(dtFile->fileName()); 
+    dtSourceString.append("("); 
+    dtSourceString.append(curName + ") #"); 
+    stringstream out; 
+    out << dtNum; 
+    dtSourceString.append(out.str()); 
+  } else {
+    dtSourceString.append(dtFileName);
+  }
+  return dtSourceString;
+}
 
 
 /////////////////////////////////////////////////////////////////////
@@ -317,6 +347,14 @@ RngDecisionTree::read(iDataStreamFile& is)
   //////////////////////////////////////////////////////////////////////
   else {
 
+    // I think the comment above is wrong - I think the presence of an
+    // integer indicates that the DT is not iterable, but it could be
+    // inline in the master file or in an external file. I'm going to 
+    // set the DT's dtFileName here to make it available for error 
+    // reporting. I think the code uses dtFile == NULL to determine
+    // that a DT is non-iterable, so hopefully this will be safe.  - Richard
+    
+    dtFileName = is.fileName(); // for ticket #182
     if (_numFeatures < 0) {
       error("ERROR: in DT named '%s', file '%s' line %d, decision tree must have >= 0 features",
       name().c_str(), is.fileName(),is.lineNo());
@@ -406,7 +444,6 @@ RngDecisionTree::seek(
   string   indexFileName;
   unsigned numIndexDTs;
   unsigned position; 
-  unsigned result; 
 
   if (!iterable()) {
     error("ERROR: trying to seek in non-iterable DT, '%s'\n",  
@@ -436,7 +473,7 @@ RngDecisionTree::seek(
   indexFile->read(numIndexDTs, "num index DTs");
 
   if (numIndexDTs != numDTs) {
-      error("ERROR: Index file '%s' lists '%d' decision trees does match '%s' which lists '%d'\n",
+      error("ERROR: Index file '%s' lists '%d' decision trees doesn't match '%s' which lists '%d'\n",
         indexFileName.c_str(), numIndexDTs, dtFileName.c_str(), numDTs );
   }
  
@@ -446,7 +483,7 @@ RngDecisionTree::seek(
   indexFile->fseek( sizeof(unsigned)*(dt_nmbr), SEEK_CUR ); 
   indexFile->read(position, "DT offset");
 
-  result = dtFile->fseek(position, SEEK_SET); 
+  (void) dtFile->fseek(position, SEEK_SET); 
   dtNum = dt_nmbr - 1; 
 }
 
@@ -1063,6 +1100,12 @@ RngDecisionTree::EquationClass::EquationClass()
 }
 
 
+bool
+RngDecisionTree::EquationClass::functionNameCollision(string const &name) {
+  return function.find(name) != function.end();
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * RngDecisionTree::EquationClass::evaluateFormula
@@ -1081,8 +1124,12 @@ RngDecisionTree::EquationClass::EquationClass()
  *   Returns a single value 
  *-----------------------------------------------------------------------
  */
+
+#define missingParentErrorString "ERROR: Reference to non-existant parent variable in formula in DT '%s' in '%s'. Asking for parent %d but only parents 0 through %d are available.\n"
+
 leafNodeValType 
 RngDecisionTree::EquationClass::evaluateFormula(
+	RngDecisionTree *dt,
 	const vector< RV* >& variables,
 	const RV* const rv
 )
@@ -1103,9 +1150,6 @@ RngDecisionTree::EquationClass::evaluateFormula(
        ++crrnt_cmnd) {
 
     command = GET_COMMAND(commands[crrnt_cmnd]); 
-
-    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula. Asking for parent %d but only %d parents are available.\n";
-
     switch (command) {
 	
       case COMMAND_PUSH_CARDINALITY_CHILD:
@@ -1115,7 +1159,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_CARDINALITY_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
         }
         stack.push_back( (variables[operand]->discrete() ? 
           RV2DRV(variables[operand])->cardinality : 0) );
@@ -1123,8 +1167,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
       case COMMAND_PUSH_PARENT_VALUE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+        if (operand >= variables.size()) {
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           RV2DRV(variables[operand])->val : 0 );	
@@ -1132,8 +1176,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
       case COMMAND_PUSH_PARENT_VALUE_MINUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+        if (operand >= variables.size()) {
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val-1) : 0 );	
@@ -1141,8 +1185,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
       case COMMAND_PUSH_PARENT_VALUE_PLUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+        if (operand >= variables.size()) {
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val+1) : 0 );	
@@ -1154,8 +1198,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
       case COMMAND_PUSH_MAX_VALUE_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+        if (operand >= variables.size()) {
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
         }
         stack.push_back( (variables[operand]->discrete() ? 
           (RV2DRV(variables[operand])->cardinality - 1) : 0) );
@@ -1238,7 +1282,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_CEIL:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-          error("ERROR:  Divide by zero error\n"); 
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt->name().c_str(), dt->getSourceString().c_str()); 
         }
         stack[last-1] = (stack[last-1] + stack[last] - 1) / stack[last];
         stack.pop_back();
@@ -1247,7 +1292,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_FLOOR:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-          error("ERROR:  Divide by zero error\n"); 
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt->name().c_str(), dt->getSourceString().c_str()); 
         }
         stack[last-1] = stack[last-1] / stack[last];
         stack.pop_back();
@@ -1256,7 +1302,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_ROUND:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-          error("ERROR:  Divide by zero error\n"); 
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt->name().c_str(), dt->getSourceString().c_str()); 
         }
         stack[last-1] = (stack[last-1] + (stack[last]>>1)) / stack[last];
         stack.pop_back();
@@ -1519,7 +1566,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_MOD:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-          error("ERROR:  Mod by zero error\n"); 
+          error("ERROR:  Mod by zero error in DT '%s' in '%s'\n", 
+		dt->name().c_str(), dt->getSourceString().c_str()); 
         }
         stack[last-1] = stack[last-1] % stack[last];
         stack.pop_back();
@@ -1741,7 +1789,6 @@ RngDecisionTree::EquationClass::parseExpression(
 {
   formulaCommand new_command;
   tokenStruct    next_token;
-  unsigned       next_precedence;
 
   //////////////////////////////////////////////////////////////////////////
   // Recursively call until a factor is found 
@@ -1774,7 +1821,7 @@ RngDecisionTree::EquationClass::parseExpression(
     else {
       next_token = token;
       getToken(formula, token);
-      next_precedence = tokenPriority[token.token];
+      (void) tokenPriority[token.token];
 
       parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
 
@@ -2540,7 +2587,7 @@ RngDecisionTree::beginIterableDT()
   // first make sure this is a DT from file object
   //////////////////////////////////////////////////////////////////////
   if (!iterable()) {
-    error("ERROR: can't call beginIterableDT() for non-file DT");
+    error("ERROR: can't call beginIterableDT() for non-file DT '%s'", name().c_str());
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -2594,7 +2641,7 @@ RngDecisionTree::nextIterableDT()
   // first make sure this is a DT from file object
   //////////////////////////////////////////////////////////////////////
   if (!iterable()) {
-    error("ERROR: can't call nextIterableDT() for non-file DT");
+    error("ERROR: can't call nextIterableDT() for non-file DT '%s'", name().c_str());
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -2882,7 +2929,22 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
     return (*(n->ln_c().function_ptr))(arr,rv);
   } else if  (n->nodeType == LeafNodeEquation) {
     leafNodeValType answer;
-    answer = n->ln_e().equation.evaluateFormula( arr, rv );
+#if 0
+    string dtSourceString;
+    if (iterable()) {
+      dtSourceString.append(dtFile->fileName());
+      dtSourceString.append("(");
+      dtSourceString.append(curName + ") #");
+#if 0
+      stringstream out;
+      out << dtNum;
+      dtSourceString.append(out.str());
+#endif
+    }
+    const char* const dtSourceFile = iterable() ? dtSourceString.c_str() : 
+                                                  dtFileName.c_str();
+#endif
+    answer = n->ln_e().equation.evaluateFormula( /* *this, (char *)_name.c_str(), (char *)dtSourceFile,*/ this, arr, rv );
     return(answer);
   } else if (n->nodeType == NonLeafNodeArray) {
     assert ( n->nln_a().ftr < int(arr.size()) );
@@ -3234,7 +3296,7 @@ bool RngDecisionTree::testFormula(
     error("   PARSE ERROR: %s", error_message );
   }
 
-  answer = node.ln_e().equation.evaluateFormula( variables, child );
+  answer = node.ln_e().equation.evaluateFormula( *this, variables, child );
   printf("   Answer: %d   0x%x\n", answer, answer);
 
   if (answer == desired_answer) {

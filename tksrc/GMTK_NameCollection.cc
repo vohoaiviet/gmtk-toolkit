@@ -4,15 +4,9 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -158,10 +152,6 @@ NameCollection::write(oDataStreamFile& os)
 void
 NameCollection::fillMxTable()
 {
-#if 0
-  infoMsg(IM::Huge,"NameCollection::fillMxTable\n");
-#endif
-
   if (mxTable.size() >= table.size())
     return;
 
@@ -445,8 +435,10 @@ NameCollection::commit_all_searches_and_replacements(){
     sort();  
 
 
-
+#if 0
+  // unused
   vector<pair<string,string> >::iterator qi=queued_changes.begin(), qie=queued_changes.end();
+#endif
   vector<std::string>::iterator nci=sorted_table.begin(), ncie=sorted_table.end();
   unsigned nchanged=0;
 

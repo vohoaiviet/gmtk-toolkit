@@ -30,15 +30,9 @@
  * 
  *  $Header$
  * 
- * Copyright (c) 2004, < fill in later >
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -55,13 +49,20 @@
 #include "GMTK_EMable.h"
 #include "GMTK_RV.h"
 #include "GMTK_NamedObject.h"
-#include "GMTK_ObservationMatrix.h"
-
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#endif
 // we need to interface to the external global observation
 // matrix object to get some parametes (such as start skip, end skip,
 // and the length of each utterance to ensure lengths are the same).
+#if 0
 extern ObservationMatrix globalObservationMatrix;
-
+#else
+extern ObservationSource *globalObservationMatrix;
+#endif
 class VECPT : public CPT {
 
   // the mode. Dense means that we have a score in the obs file for
@@ -75,8 +76,12 @@ class VECPT : public CPT {
   // (constructor creates an empty object). Note that these
   // observation temporal lengths here must exactly match that of the
   // observation file.
+#if 0
   ObservationMatrix *obs;
-  
+#else
+  ObservationSource *obs;
+#endif
+
   // TODO: redo all this so that it works well
   // with obs.openFile(). Either change to char* and make
   // proper destructor, or something else.
@@ -219,7 +224,11 @@ public:
 
   // support to change the segment number
   void setSegment(const unsigned segNo) {
+#if 0
     obs->loadSegment(segNo);
+#else
+    obs->openSegment(segNo);
+#endif
   }
   unsigned numFrames() {
     // return the number of frames in the current segment.

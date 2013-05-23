@@ -1,5 +1,10 @@
 // -*- C++ -*-
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
 // Dots and dashes have been disabled because of the instability they
 // induce. The wxWidgets documentation says that they may only be
 // drawn with width one. I believe the problem is that when you print
@@ -1010,7 +1015,7 @@ END_EVENT_TABLE()
 
 
 
-/* Hack to work around https://lungs.ee.washington.edu/trac/gmtk/ticket/71
+/* Hack to work around https://j.ee.washington.edu/trac/gmtk/ticket/71
  */
 class wxTicket71Dialog : public wxDialog {
 	public:
@@ -1671,10 +1676,12 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_PAGESETUP, wxT("Page Setup..."), wxT("Set up page size/orientation"), wxITEM_NORMAL);
 	menu_file->Append(MENU_FILE_PRINT, wxT("&Print...\tCtrl+P"), wxT("Preview and print the current graph"), wxITEM_NORMAL);
-	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to EPS file...\tCtrl+E"), wxT("Print an Encapsulated PostScript file of the current graph"), wxITEM_NORMAL);
+	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to "PRINT2FILE_ABBREV" file...\tCtrl+E"), wxT("Print an "PRINT2FILE_FORMAT" file of the current graph"), wxITEM_NORMAL);
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_CLOSE, wxT("&Close\tCtrl+W"), wxT("Close current placement file"), wxITEM_NORMAL);
+#ifndef GMTK_WX_OSX
 	menu_file->Append(MENU_FILE_EXIT, wxT("E&xit\tCtrl+Q"), wxT("Close all files and exit"), wxITEM_NORMAL);
+#endif
 	MainVizWindow_menubar->Append(menu_file, wxT("&File"));
 	// These don't make sense until a document is open.
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
@@ -2374,6 +2381,18 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 	}
 }
 
+
+const char * PS2EPS_Command() 
+{
+  const char * rc = getenv("GMTK_PS2EPS_CMD");
+  if (rc == NULL)
+    rc = PS2EPS_CMD;
+  // fprintf(stdout,"cpp command got is (%s)\n",rc);
+  return rc;
+}
+
+
+
 /**
  *******************************************************************
  * Get a file name from the User, print a temporary PostScript file
@@ -2418,7 +2437,7 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage) {
 
-		wxFileDialog eps_file_dialog(this, "Save to EPS", "", "", "*.eps", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+		wxFileDialog eps_file_dialog(this, "Save to "PRINT2FILE_FORMAT, "", "", "*."EPS_EXT, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 		if(eps_file_dialog.ShowModal() == wxID_CANCEL)
 			return; //canceled
 
@@ -2510,10 +2529,12 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		//this is the command being sent to the shell (single quote the file name)
 		string ps2eps_cmd = "cat ";
 		ps2eps_cmd.append(temp_file_name);
-		ps2eps_cmd.append(" | ps2eps > '");
+		ps2eps_cmd.append(" | ");
+		ps2eps_cmd.append(PS2EPS_Command());
+		ps2eps_cmd.append(" > '");
 
 		//quote single quotes to be safe
-		string temp_path = eps_file_dialog.GetPath().wx_str();
+		string temp_path = eps_file_dialog.GetPath().ToStdString(); //wx_str();
 		size_t match_loc = 0;
 		while(string::npos != (match_loc = temp_path.find("'", match_loc))){
 			temp_path.replace(match_loc,1,"'\"'\"'"); //replace ' with '"'"'
@@ -2521,7 +2542,6 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		}
 		ps2eps_cmd.append(temp_path);
 		ps2eps_cmd.append("'");
-fprintf(stderr, "executing: %s", ps2eps_cmd.c_str());		
 		//execute the command
 		if(system(ps2eps_cmd.c_str()) != 0){
 			//print error if needed
@@ -4175,8 +4195,17 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		// valid below we may mark it invalid
 		bool strFile_valid = true;
 		//these are just char * versions of the filenames
+#if 1
+                // Fix for strange wxWidgets wxString::char_str() issue
+                // See https://j.ee.washington.edu/trac/gmtk/ticket/349
+                wxCharBuffer str_cb = strFile.char_str(wxConvUTF8);
+                const char *strFile_cstr = str_cb.data();
+                wxCharBuffer gvp_cb = gvpFile.char_str(wxConvUTF8);
+                const char *gvpFile_cstr = gvp_cb.data();
+#else
 		char * strFile_cstr = strFile.char_str(wxConvUTF8);
 		char * gvpFile_cstr = gvpFile.char_str(wxConvUTF8);
+#endif
 		/* store the strFile name so that we can use it to in the FileParser
 		 * this way we only need to have 1 call to the FileParser, even
 		 * if we modify the tempFileName
@@ -5133,7 +5162,15 @@ StructPage::OnChar( wxKeyEvent &event )
 	mouse_pos.x = (int)round(mouse_pos.x / gZoomMap[displayScale]);
 	mouse_pos.y = (int)round(mouse_pos.y / gZoomMap[displayScale]);
 
-	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == 'r') {
+// See https://j.ee.washington.edu/trac/gmtk/71 - Some Apple keyboards
+// have keys labeled "delete" tht actually generate backspace events.
+// Uncomment WXK_BACK below to allow backspace to also delete control
+// points in addition to the delete key. Note that, at least on my MacBook,
+// I can generate WXK_DELETE by holding down the fn key and hitting delete
+
+	if (event.m_keyCode == WXK_DELETE || /* event.m_keyCode == WXK_BACK || */
+            event.m_keyCode == 'r') 
+  	{
 		save_undo();
 		//if we actually deleted any cps then redraw, otherwise pop
 		//one state from the undo stack
@@ -7555,8 +7592,13 @@ StructPage::RequestClose( void )
 						wxT("Save the changes to a different file."),
 						wxT("Discard the changes."),
 						wxT("Nevermind. Don't close the file.") };
+#if wxCHECK_VERSION( 2, 9, 4 )
 		wxSingleChoiceDialog dlg( this, msg, wxT("Save file?"), 4, choices,
-					  NULL, wxOK | wxCENTRE, wxDefaultPosition );
+					  (void**)NULL, wxOK | wxCENTRE, wxDefaultPosition );
+#else
+                wxSingleChoiceDialog dlg( this, msg, wxT("Save file?"), 4, choices,
+                                          (char**)NULL, wxOK | wxCENTRE, wxDefaultPosition );
+#endif
 		// prompt to save it
 		dlg.ShowModal(); // no need to test for wxOK
 		// if the user chooses to save it
@@ -9625,11 +9667,13 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points.\n"
+			     "\t\tAlso note that some Apple keyboards label the BACKSPACE key as DELETE. You might try fn-DELETE\n"
+			     "\t\tif DELETE by itself doesn't work.\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'r'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points.\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'g'");
 	help_msg->SetDefaultStyle(normal);

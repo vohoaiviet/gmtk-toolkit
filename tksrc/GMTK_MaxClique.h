@@ -19,14 +19,9 @@
  *
  *   meaning that cliques are taken to be max cliques.
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
 
@@ -71,6 +66,7 @@
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_SpaceManager.h"
 #include "GMTK_FactorInfo.h"
+#include "GMTK_ObservationFile.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -105,7 +101,7 @@ class CliqueValueHolder  {
   // be >= 1.0.
   // Ideally, should be a const.
   float growthFactor;
-
+  
   // The size of the initial allocation unit. A chunk is an
   // array of packed clique values. When we allocate the n'th
   // chunk, we allocate k(n) new packed clique values, 
@@ -145,10 +141,18 @@ class CliqueValueHolder  {
 
 public:
 
+  // this is the default value for growthFactor, set by -memoryGrowth
+  static float defaultGrowthFactor;
+
+  // this is the default value for allocationUnitChunkSize, set by -memoryGrowth
+  static unsigned defaultAllocationUnitChunkSize;
+
   // create an empty object to re-construct later
   CliqueValueHolder() {}
   
   // real constructor
+  CliqueValueHolder(unsigned cliqueValueSize);
+
   CliqueValueHolder(unsigned cliqueValueSize,
 		    unsigned allocationUnitChunkSize,
 		    float growthFactor=1.25);
@@ -246,8 +250,13 @@ class MaxClique : public IM {
   friend class GMTemplate;
   friend class SeparatorClique;
 
+ public:
 
-public:
+  // memory management options set by -memoryGrowth
+  static unsigned spaceMgrStartingSize;
+  static float    spaceMgrGrowthRate;
+  static float    spaceMgrDecayRate;
+
   // Thresholds for -cpbeam pruning. We keep previous clique max value
   // and previous previous clique max value around.
   logpr prevMaxCEValue;
@@ -331,6 +340,11 @@ public:
   //                and the per-frame log-likelyhood can be estimaed
   //                by a short-length run of the program.
   static double normalizeScoreEachClique;
+
+
+  // if true, zero cliques abort GMTK. if false, only the segment is
+  // aborted and inference continues for the next segment
+  static bool failOnZeroClique;
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
 #if 0
@@ -1067,6 +1081,17 @@ public:
   static float veSeparatorLogProdCardLimit;
 
 
+  // Memory management parameters set by -memoryGrowth
+  static unsigned aiStartingSize;
+  static float    aiGrowthFactor;
+  static unsigned remStartingSize;
+  static float    remGrowthFactor;
+  static unsigned sepSpaceMgrStartingSize;
+  static float    sepSpaceMgrGrowthRate;
+  static float    sepSpaceMgrDecayRate;
+  static unsigned remSpaceMgrStartingSize;
+  static float    remSpaceMgrGrowthRate;
+  static float    remSpaceMgrDecayRate;
 
   // A boolean flag that the inference code uses to determine if it
   // should skip this separator. This is used when a P partition is
@@ -1399,6 +1424,8 @@ class ConditionalSeparatorTable : public IM
 
 public:
 
+  // Memory management options set by -memoryGrowth
+  static unsigned remHashMapStartingSize;
 
   // WARNING: constructor hack to create a very broken object with
   // non-functional reference objects (in order to create an array of
@@ -1522,7 +1549,6 @@ class MaxCliqueTable  : public IM
     // even a different partition (see the variable
     // disconnectChildrenOfObservedParents in RV.h).
     set <RV*> returnRVsAndTheirObservedParentsAsSet();
-
   };
 
 
@@ -1623,6 +1649,9 @@ class MaxCliqueTable  : public IM
 
 
 public:
+
+  // Memory management options set by -memoryGrowth
+  static float valuePoolGrowthRate;
 
   // WARNING: constructor hack to create a very broken object with
   // non-functional reference objects (in order to create an array of
@@ -1855,9 +1884,63 @@ public:
   // print all clique values and prob to given file.
   void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
 			  FILE*f,const char*str=NULL,
-			  const bool normalize = false,
+			  const bool normalize = true, const bool unlog = true,
 			  const bool justPrintEntropy = false);
   
+  void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
+			  ObservationFile *f, const bool normalize = true, 
+			  const bool unlog = true);
+  
+  int cliqueValueDistance(SharedLocalStructure& sharedStructure, 
+			  unsigned a, unsigned b);
+
+  static unsigned cliqueDomainSize(SharedLocalStructure& sharedStructure);
+
+  static void printCliqueOrder(FILE *f, SharedLocalStructure& sharedStructure, int frameDelta=0);
+
+  unsigned cliqueValueMagnitude(SharedLocalStructure& sharedStructure, unsigned cliqueIndex);
+
+
+  class CliqueValueIndex {
+
+    SharedLocalStructure *sharedStructure;
+    MaxCliqueTable       *table;
+
+  public:
+    unsigned index;
+
+    CliqueValueIndex(SharedLocalStructure *sharedStructure, 
+		     MaxCliqueTable       *table,
+		     unsigned index)
+      : sharedStructure(sharedStructure), table(table), index(index)
+    {}
+
+    CliqueValueIndex() 
+      : sharedStructure(NULL), table(NULL), index(0)
+    {}
+ 
+    bool operator<(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) < 0;
+    }
+
+    bool operator>(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) > 0;
+    }
+
+    bool operator==(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) == 0;
+    }
+
+    CliqueValueIndex& operator=(CliqueValueIndex rhs) {
+      this->sharedStructure = rhs.sharedStructure;
+      this->table = rhs.table;
+      this->index = rhs.index;
+      return *this;
+    }
+    
+  };
+
+
   // EM accumulation support.
   void emIncrement(MaxCliqueTable::SharedLocalStructure&,
 		   const logpr probE, 

@@ -14,17 +14,11 @@
  * This part of the code has the implementation of class FNGramCPT for
  * gmtk.  Please see GMTK_FNGramCPT.h for more information.
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
  *  $Header$
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -2127,7 +2121,7 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 
 		  // TODO: This if condition does not make sense. See ticket #98
 		  // Determine what was really meant here and fix it.
-		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | (_startNode == _startNode)) ) {
 				// figure out which bits are on
 				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
 				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {
@@ -2191,7 +2185,7 @@ logpr FNGramCPT::probGivenParents(vector < RV* >& parents, DiscRV* drv) {
 
 		  // TODO: This if condition does not make sense. See ticket #98
 		  // Determine what was really meant here and fix it.
-		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | (_startNode == _startNode)) ) {
 				// figure out which bits are on
 				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
 				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {

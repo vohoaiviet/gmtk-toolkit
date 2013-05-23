@@ -6,14 +6,9 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  * The top level GMTK random variable object for the RV class hierarchy.
@@ -52,7 +47,11 @@
 #include "GMTK_RVInfo.h"
 #include "GMTK_NamedObject.h"
 #include "GMTK_RngDecisionTree.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 #include "GMTK_RV.h"
 
 class ScPnShRV {
@@ -78,23 +77,23 @@ public:
     } else if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
       // TODO: check here that global obsevation matrix is active.
       p.valref() += 
-	(*globalObservationMatrix.floatVecAtFrame(rv->frame(),
-						  wi.penalty.firstFeatureElement));
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(),
+						    wi.penalty.firstFeatureElement)));
     }
     if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
       p.valref() *= wi.scale.weight_value;
     } else if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
       p.valref() *= 
-	(*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
-						  wi.scale.firstFeatureElement));
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+						    wi.scale.firstFeatureElement)));
     }
     if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
       logpr shift((void*)NULL,wi.shift.weight_value);
       p += shift;
     } else if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
       logpr shift((void*)NULL,
-		  (*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
-							    wi.shift.firstFeatureElement)));
+		  (*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+							      wi.shift.firstFeatureElement))));
       p += shift;
     }
   }
@@ -115,16 +114,16 @@ public:
   }
   inline void modifyProbabilityOP(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
       p.valref() += 
-	(*globalObservationMatrix.floatVecAtFrame(rv->frame(),
-						  wi.penalty.firstFeatureElement));
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(),
+						    wi.penalty.firstFeatureElement)));
   }
   inline void modifyProbabilityCS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
       p.valref() *= wi.scale.weight_value;
   }
   inline void modifyProbabilityOS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
       p.valref() *= 
-	(*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
-						  wi.scale.firstFeatureElement));
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+						  wi.scale.firstFeatureElement)));
   }
   inline void modifyProbabilityCO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
       logpr shift((void*)NULL,wi.shift.weight_value);
@@ -132,8 +131,8 @@ public:
   }
   inline void modifyProbabilityOO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) { 
       logpr shift((void*)NULL,
-		  (*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
-							    wi.shift.firstFeatureElement)));
+		  (*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+							      wi.shift.firstFeatureElement))));
       p += shift;
   }
 

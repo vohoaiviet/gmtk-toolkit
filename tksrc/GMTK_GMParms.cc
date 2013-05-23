@@ -5,15 +5,9 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -24,7 +18,9 @@
 #if HAVE_HG_H
 #include "hgstamp.h"
 #endif
-
+#if HAVE_DLFCN_H
+#include <dlfcn.h>
+#endif
 
 #include <math.h>
 #include <stdlib.h>
@@ -58,6 +54,7 @@
 #include "GMTK_NGramCPT.h"
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_VECPT.h"
+#include "GMTK_DeepVECPT.h"
 #include "GMTK_Vocab.h"
 #include "GMTK_LatticeADT.h"
 #include "GMTK_LatticeNodeCPT.h"
@@ -74,7 +71,8 @@
 #include "GMTK_ZeroScoreMixture.h"
 #include "GMTK_UnityScoreMixture.h"
 
-#include "GMTK_ObservationMatrix.h"
+#include "GMTK_ObservationSource.h"
+
 #include "GMTK_CFunctionDeterministicMappings.h"
 
 VCID(HGID)
@@ -136,6 +134,7 @@ GMParms::~GMParms()
   deleteObsInVector(latticeAdts);
   deleteObsInVector(latticeNodeCpts);
   deleteObsInVector(veCpts);
+  deleteObsInVector(deepVECpts);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
   // deleteObsInVector(logitSwitchingMixtures);
@@ -175,6 +174,7 @@ void GMParms::add(LatticeADT* ob) {
 void GMParms::add(LatticeNodeCPT* ob) { add(ob,latticeNodeCpts,latticeNodeCptsMap); }
 void GMParms::add(LatticeEdgeCPT* ob) { add(ob,latticeEdgeCpts,latticeEdgeCptsMap); }
 void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
+void GMParms::add(DeepVECPT*ob) { add(ob,deepVECpts,deepVECptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
 void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
@@ -856,6 +856,42 @@ void GMParms::readVECpts(iDataStreamFile& is, bool reset)
 }
 
 
+void GMParms::readDeepVECpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepVirtualEvidenceCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of Deep VE CPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepVECpts.resize(num);
+  } else {
+    start = deepVECpts.size();
+    deepVECpts.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepVECPT* ob;
+
+    is.read(cnt, "Can't read DeepVirtualEvidenceCPT num");
+    if ( cnt != i )
+      error("ERROR: DeepVECPT count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepVECPT();
+    ob->read(is);
+    if ( deepVECptsMap.find(ob->name()) != deepVECptsMap.end() )
+      error("ERROR: DeepVECPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepVECpts[i + start] = ob;
+    deepVECptsMap[ob->name()] = i + start;
+  }
+}
+
+
 
 
 void
@@ -1160,7 +1196,7 @@ GMParms::readAll(iDataStreamFile& is)
   readFNgramImps(is);
   readLatticeAdts(is);
   readVECpts(is);
-
+  readDeepVECpts(is);
   // next read definitional items
   readComponents(is);
   readMixtures(is);
@@ -1271,6 +1307,8 @@ GMParms::readNonTrainable(iDataStreamFile& is)
   readFNgramImps(is);
   infoMsg(Low+9,"Reading VirtualEvidenceCPTs\n");
   readVECpts(is);
+  infoMsg(Low+9,"Reading DeepVirtualEvidenceCPTs\n");
+  readDeepVECpts(is);
 }
 
 
@@ -1381,6 +1419,9 @@ GMParms::read(
 
     } else if (keyword == "VE_CPT_IN_FILE") {
       readVECpts(*((*it).second),false);
+
+    } else if (keyword == "DEEP_VE_CPT_IN_FILE") {
+      readDeepVECpts(*((*it).second),false);
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
@@ -2722,8 +2763,8 @@ GMParms::next()
 unsigned
 GMParms::setSegment(const unsigned segmentNo)
 {
-  globalObservationMatrix.loadSegment(segmentNo);
-  const unsigned numFrames = globalObservationMatrix.numFrames();
+  globalObservationMatrix->openSegment(segmentNo);
+  unsigned numFrames = globalObservationMatrix->numFrames();
 
   for(unsigned i = 0; i<iterableDts.size(); i++) {
     iterableDts[i]->seek(segmentNo);
@@ -2731,9 +2772,30 @@ GMParms::setSegment(const unsigned segmentNo)
   }
   for (unsigned i=0; i< veCpts.size(); i++) {
     veCpts[i]->setSegment(segmentNo);
-    if (veCpts[i]->numFrames() != numFrames) 
+    
+    // FIXME - investigate if veCpts work with stream input (where
+    //         the number of frames isn't known)
+    if (numFrames != 0 && veCpts[i]->numFrames() != numFrames) 
       error("ERROR: number of frames in segment %d for main observation matrix is %d, but VirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
   }
+
+  for (unsigned i=0; i< deepVECpts.size(); i++) {
+    deepVECpts[i]->setSegment(segmentNo);
+
+#if 0
+// This is not needed since DeepVECPTs only take input from the
+// global observation matrix
+    // FIXME - investigate if DeepVECpts work with stream input (where
+    //         the number of frames isn't known)
+    if (numFrames != 0 && deepVECpts[i]->numFrames() != numFrames) 
+      error("ERROR: number of frames in segment %d for main observation matrix is %d, but DeepVirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
+#endif
+  }
+
+  // FIXME - investigate if lattice CPTs work with stream input (where
+  //         the number of frames isn't known)
+  if (numFrames != 0) {
+
   // set the lattice CPT frame indices
   for (unsigned i=0; i < latticeAdts.size(); i++ ) {
 	  // I cannot call iterableLatticeAdts here because
@@ -2745,6 +2807,9 @@ GMParms::setSegment(const unsigned segmentNo)
 	  }
 	  latticeAdts[i]->resetFrameIndices(numFrames);
   }
+
+  }
+
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
@@ -2813,20 +2878,20 @@ GMParms::setStride(const unsigned stride)
 void
 GMParms::checkConsistentWithGlobalObservationStream()
 {
-  if ((int)globalObservationMatrix.startSkip() < -(int)Dlinks::_globalMinLag)
+  if ((int)globalObservationMatrix->startSkip() < -(int)Dlinks::_globalMinLag)
     error("ERROR: a start skip of %d is invalid for a minimum dlink lag of %d\n",
-	  globalObservationMatrix.startSkip(),
+	  globalObservationMatrix->startSkip(),
 	  Dlinks::_globalMinLag);
 
-  if ((int)globalObservationMatrix.endSkip() < (int)Dlinks::_globalMaxLag)
-    error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
-	  globalObservationMatrix.endSkip(),
-	  Dlinks::_globalMaxLag);
-
-  if ((int)globalObservationMatrix.numContinuous() <= (int)Dlinks::_globalMaxOffset)
+    if ((int)globalObservationMatrix->endSkip() < (int)Dlinks::_globalMaxLag)
+      error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
+	    globalObservationMatrix->endSkip(),
+	    Dlinks::_globalMaxLag);
+  
+  if ((int)globalObservationMatrix->numContinuous() <= (int)Dlinks::_globalMaxOffset)
     error("ERROR: there is a dlink ofset of value %d which is too large for the observation matrix with only %d continuous features.",
 	  Dlinks::_globalMaxOffset,
-	  globalObservationMatrix.numContinuous());
+	  globalObservationMatrix->numContinuous());
 }
 
 
@@ -2879,6 +2944,8 @@ unsigned GMParms::totalNumberParameters()
     sum += fngramCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<veCpts.size();i++)
     sum += veCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<deepVECpts.size();i++)
+    sum += deepVECpts[i]->totalNumberParameters();
   return sum;
 
 }
@@ -3760,6 +3827,74 @@ GMParms::commit_nc_changes()
 
 
 
+void 
+dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames) {
+  for (unsigned i=0; i < maxFilenames; i+=1) {
+    if (dlopenFilenames[i]) {
+#if HAVE_DLFCN_H
+      void *handle = dlopen(dlopenFilenames[i], RTLD_NOW|RTLD_LOCAL);
+      if (!handle) {
+	error("Failed to load '%s': %s", dlopenFilenames[i], dlerror());
+      }
+      dlerror(); // clear errors
+
+      // POSIX defines dlsym to return a void*. ISO C & C++ do not
+      // require that a void* can be cast to a function pointer,
+      // and there are architectures (including x86 in certain
+      // modes) where it's not possible (sizeof(void*) != 
+      // sizeof(function pointer)). So, such architectures/modes
+      // cannot be POSIX compliant. The union below avoids the
+      // compiler warning about this situation, but it assumes
+      // that the void* returned by dlsym can safely be cast to
+      // a function pointer.
+
+      typedef void (*register_t)();
+      assert(sizeof(void*) == sizeof(register_t)); // necessary, but not sufficient?
+      typedef union {
+        void *obj_ptr;
+        register_t fn_ptr;
+      } registerUnion;
+      registerUnion registerMappers;
+      registerMappers.obj_ptr = dlsym(handle, "registerMappers");
+
+      const char *dlsym_error = dlerror();
+      if (dlsym_error) {
+	error("Failed to find registerMappers() function in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      registerMappers.fn_ptr();
+      
+      
+      dlerror(); // clear errors
+      vector<CFunctionMapperType> *mapperFunctions = (vector<CFunctionMapperType> *) dlsym(handle, "mapperFunctions");
+      dlsym_error = dlerror();
+      if (dlsym_error) {
+	error("Failed to find mapperFunctions in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      dlerror(); // clear errors
+      vector<unsigned>    *mapperNumFeatures = (vector<unsigned> *) dlsym(handle, "mapperNumFeatures");
+      if (dlsym_error) {
+	error("Failed to find mapperNumFeatures in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      dlerror(); // clear errors
+      vector<char const*> *mapperNames = (vector<char const*> *) dlsym(handle, "mapperNames");
+      if (dlsym_error) {
+	error("Failed to find mapperNames in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      for (unsigned j=0; j < mapperFunctions->size(); j+=1) {
+	infoMsg(IM::Moderate,"registering %s[%u] from %s\n", (*mapperNames)[j], (*mapperNumFeatures)[j], dlopenFilenames[i]);
+	GM_Parms.registerDeterministicCMapper((*mapperNames)[j], (*mapperNumFeatures)[j], (*mapperFunctions)[j]);
+      }
+#else
+      error("dynamic loading of mapping functions not supported");
+#endif
+    }
+  }
+}
+
+
 
 
 
@@ -3776,12 +3911,19 @@ GMParms::commit_nc_changes()
 #ifdef MAIN
 
 #include "rand.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 
 RAND rnd(false);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
-
+#else
+FileSource globalObservationMatrix;
+#endif
 
 
 int

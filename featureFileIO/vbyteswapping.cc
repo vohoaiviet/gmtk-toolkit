@@ -26,6 +26,10 @@ union union_float_int32 {
   float f;
 };
 
+union union_double_int64 {
+  intv_int64_t i;
+  double       f;
+};
 
 
 // 32-bit unsigned Endian byte swap
@@ -46,6 +50,37 @@ intv_int32_t swapb_i32_i32(intv_int32_t val)
 }
 
 
+// 64-bit unsigned Endian byte swap
+intv_int64_t swapb_i64_i64(intv_int64_t val)
+{
+  register intv_uint64_t uval;
+  register intv_uint64_t res;
+  register intv_int64_t b0, b1, b2, b3, b4, b5, b6, b7;
+
+  uval = (intv_uint64_t) val;
+  b0 =  uval >> 56;
+  b1 = (uval >> 40) & 0x000000000000ff00ULL;
+  b2 = (uval >> 24) & 0x0000000000ff0000ULL;
+  b3 = (uval >>  8) & 0x00000000ff000000ULL;
+  b4 = (uval <<  8) & 0x000000ff00000000ULL;
+  b5 = (uval << 24) & 0x0000ff0000000000ULL;
+  b6 = (uval << 40) & 0x00ff000000000000ULL;
+  b7 =  uval << 56;
+
+  res = b0 | b1 | b2 | b3 | b4 | b5 | b6 | b7;
+  return (intv_int32_t) res;
+}
+
+
+double swapb_f64_f64(double fval) {
+  union_double_int64 diu;
+
+  diu.f = fval;
+  diu.i = swapb_i64_i64(diu.i);
+  return diu.f;
+}
+
+
 // TODO: this should be changed to i16 at some point.
 short swapb_short_short(short sval) {
  
@@ -62,7 +97,7 @@ short swapb_short_short(short sval) {
 }
 
 // 32-bit float byte swap
-inline float
+float
 swapb_f32_f32(const float fval)
 {
   union_float_int32 fiu;

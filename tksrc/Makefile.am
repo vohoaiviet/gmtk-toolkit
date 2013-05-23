@@ -1,10 +1,16 @@
 
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
+
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
-HGID = $(shell hg id)
-HGDATE = $(shell hg parents --template '{date|date}')
-VERSIONFLAG = -DHGID="\"$(HGID)\"" -DHGDATE="\"$(HGDATE)\""
+VERSIONFLAG = -DHGID="\"`hg id`\"" -DHGDATE="\"`hg parents --template '{date|date}'`\""
 else
 VERSIONFLAG = 
 endif
@@ -17,15 +23,16 @@ EXCCFLAGS = -m32
 EXCXXFLAGS = -m32
 EXLDDFLAGS = -m32
 OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
-distclean-local:
-	-rm -rf gmtkViz.app
 else
 OSXLDFLAGS =
 EXCCFLAGS =
 EXCXXFLAGS =
 EXLDFLAGS = 
 endif
- 
+
+clean-local:
+	-rm -rf gmtkViz.app
+
 DEBUGFLAGS = -g
 if NO_ASSERTIONS
 DEBUGFLAGS += -DNDEBUG
@@ -99,6 +106,7 @@ GMTK_RngDecisionTree.h GMTK_RngDecisionTree.cc \
 GMTK_NameCollection.h GMTK_NameCollection.cc \
 GMTK_GMTemplate.h GMTK_GMTemplate.cc \
 GMTK_JunctionTree.h GMTK_JunctionTree.cc \
+GMTK_CountIterator.h \
 GMTK_GraphicalModel.h GMTK_GraphicalModel.cc \
 GMTK_MaxClique.h GMTK_MaxClique.cc \
 GMTK_BoundaryTriangulate.h GMTK_BoundaryTriangulate.cc \
@@ -121,6 +129,7 @@ GMTK_Sw_HidDiscRV.h GMTK_Sw_HidDiscRV.cc \
 GMTK_Sw_ObsContRV.h GMTK_Sw_ObsContRV.cc \
 GMTK_Sw_ObsDiscRV.h GMTK_Sw_ObsDiscRV.cc \
 GMTK_VECPT.h GMTK_VECPT.cc \
+GMTK_DeepVECPT.h GMTK_DeepVECPT.cc \
 GMTK_NetworkFlow.h GMTK_NetworkFlow.cc \
 GMTK_NetworkFlowTriangulate.h GMTK_NetworkFlowTriangulate.cc \
 GMTK_LatticeADT.h GMTK_LatticeADT.cc GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h \
@@ -159,6 +168,7 @@ GMTK_Partition.h GMTK_Partition.cc \
 GMTK_JT_Partition.h GMTK_JT_Partition.cc \
 GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
+GMTK_BinaryViterbiFileUtils.h GMTK_BinaryViterbiFileUtils.cc \
 GMTK_JunctionTreeMessagePassing.cc \
 GMTK_JunctionTreeIslandMessagePassing.cc \
 version.h
@@ -177,13 +187,27 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 # include register_user_internal_cfunc_dts.cc and 
 #   user_internal_cfunc_dts.cc in the tar ball
 EXTRA_DIST = \
+GMTK_dlopenDeterministicMappings.h \
 register_user_internal_cfunc_dts.cc \
-user_internal_cfunc_dts.cc
+user_internal_cfunc_dts.cc \
+dlopen_cfunc_dts.cc
 
 
 bin_PROGRAMS = \
-gmtkTime gmtkJT gmtkEMtrain gmtkKernel gmtkViterbi gmtkTriangulate \
-gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie gmtkModelInfo \
+gmtkTime \
+gmtkJT \
+gmtkEMtrain \
+gmtkKernel \
+gmtkViterbi \
+gmtkTriangulate \
+gmtkParmConvert \
+gmtkTFmerge \
+gmtkDTindex \
+gmtkNGramIndex \
+gmtkTie \
+gmtkModelInfo \
+gmtkOnline \
+gmtkPrint \
 $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkViz gmtkViz.app
 
@@ -193,13 +217,14 @@ gmtkTime_SOURCES = gmtkTime.cc
 gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 gmtkKernel_SOURCES = gmtkKernel.cc
 gmtkViterbi_SOURCES = gmtkViterbi.cc
+gmtkPrint_SOURCES = gmtkPrint.cc
 gmtkTriangulate_SOURCES = gmtkTriangulate.cc
 gmtkParmConvert_SOURCES = gmtkParmConvert.cc
 gmtkModelInfo_SOURCES = gmtkModelInfo.cc
 gmtkTFmerge_SOURCES = gmtkTFmerge.cc
 gmtkDTindex_SOURCES = gmtkDTindex.cc
 gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
-
+gmtkOnline_SOURCES = gmtkOnline.cc
 
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 #	-@rm -f $@
@@ -234,18 +259,24 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+parserTest \
 testPackCliqueValue \
 testViterbi \
-neghead
+neghead \
+dlinktest
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
 # testHash testHashTree?
 
 
+dlinktest_SOURCES = dlinktest.cc
+
 testViterbi_SOURCES = testViterbi.ll
 
 neghead_SOURCES = neghead.cc
+
+parserTest_SOURCES = parserTest.cc
 
 #testMDCPT_SOURCES = GMTK_MDCPT.cc GMTK_MDCPT.h
 #testMDCPT_CXXFLAGS = -DMAIN \
@@ -290,6 +321,4 @@ AM_LFLAGS = -B
 #testFileParser_LFLAGS = -B
 #testFileParser_CXXFLAGS = -DMAIN \
 #$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-
-
 

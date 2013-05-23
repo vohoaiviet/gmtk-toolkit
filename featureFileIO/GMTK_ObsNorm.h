@@ -1,13 +1,18 @@
 #ifndef GMTK_OBSNORM_H
 #define GMTK_OBSNORM_H
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
 #include "GMTK_ObsPrint.h"
 
 
 void getSegMarkers(int* seg_markers, const unsigned size, char* segment_length_fname, unsigned segment_length);
 
 void obsNorm(FILE* out_fp,
-	     ObservationMatrix* obs_mat,
+	     FileSource* obs_mat,
 	     Range& srrng,
 	     const double result_mean,
 	     const double result_std,

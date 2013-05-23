@@ -1,4 +1,7 @@
 //
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 // Simple code to read/write data files in either ASCII or binary
 // consisting of either chars, ints, floats, or doubles. If it's an
 // ASCII file, supports reading/writting comments starting with COMMENTCHAR, 
@@ -374,9 +377,9 @@ iDataStreamFile::rewind()
 
 
 int
-iDataStreamFile::fseek ( long offset , int origin ) { 
+iDataStreamFile::fseek ( gmtk_off_t offset , int origin ) { 
   assert ( Binary || ! (cppIfAscii || piped) );
-  return(::fseek(fh,offset,origin)); 
+  return(gmtk_fseek(fh,offset,origin)); 
 }
 
 bool 
@@ -599,17 +602,19 @@ iDataStreamFile::readIfMatch(const string& matchTokenStr, const char *msg)
     } while (1);
     if (!success) {
       // need to move file pointer back
-      if (::fseek(fh, -(long)(i+1), SEEK_CUR))
+      if (gmtk_fseek(fh, -(gmtk_off_t)(i+1), SEEK_CUR))
 	error("ERROR: readIfMatch: trouble seeking to %d'th previous character in file '%s', '%s', : %s\n",
 	      i+1,
 	      fileName(),strerror(errno),
 	      (msg != NULL ? msg : ""));
     }
   } else {
-    if (!prepareNext())
-	error("ERROR: readIfMatch: trouble getting next line in file '%s', '%s', : %s\n",
-	      fileName(),strerror(errno),
-	      (msg != NULL ? msg : ""));
+    if (!prepareNext()) {
+      if (feof(fh)) return false; // hit EOF without matching ...
+      error("ERROR: readIfMatch: trouble getting next line in file '%s', '%s', : %s\n",
+	    fileName(),strerror(errno),
+	    (msg != NULL ? msg : ""));
+    }
     char c;
     // read a string up to the next NULL character while things match
     unsigned i = 0;
@@ -852,7 +857,7 @@ char iDataStreamFile::peekChar(const char *msg) {
     size_t rc = fread(&c, sizeof(char), 1,fh);
     if (rc != 1)
       return errorReturn("peekChar",msg);
-    if (::fseek(fh, -1L, SEEK_CUR))
+    if (gmtk_fseek(fh, (gmtk_off_t)-1, SEEK_CUR))
       error("ERROR: in peekChar, trouble seeking to previous character in file '%s', '%s'\n",
 	    fileName(),strerror(errno));
     return c;

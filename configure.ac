@@ -1,15 +1,69 @@
 #                                               -*- Autoconf -*-
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
 AC_INIT([GMTK],m4_esyscmd([printf %s `head -n 1 RELEASE`]),
-        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+        [https://j.ee.washington.edu/trac/gmtk/newticket])
+AM_INIT_AUTOMAKE([1.11 tar-ustar silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],
               [gmtkViz=${enableval}], [gmtkViz=yes])
+
+# The following is for ticket 192. It's somewhat of a kludge.
+# If the build cpp supports "-x assembler-with-cpp" (it's 
+# likely only GCC's cpp does), we make GMTK's default cpp 
+# command "$CPP -x assembler-with-cpp" in order to eliminate
+# warnings about GMTK ASCII input files that aren't compatible 
+# with the C lexical rules normally enforced by cpp - this 
+# assumes the build cpp will be available and on the $PATH of 
+# the end-user's machine. Otherwise, the default is just "cpp". 
+
+# The user can override this at build-time with the 
+# "--with-cppCmd" configure argument, or at GMTK run-time
+# with the $GMTK_CPP_CMD environment variable.
+
+# We're going to fiddle with CPP and its arguments, so
+# remember what to reset them to when we're done
+AC_REQUIRE_CPP
+AC_LANG_PUSH([C])
+gmtk_save_CPPFLAGS=${CPPFLAGS}
+CPPFLAGS="-x assembler-with-cpp $CPPFLAGS"
+#CPPFLAGS="-std=c89 $CPPFLAGS"
+
+# see if the new flags handle the ticket 192 problems
+AC_PREPROC_IFELSE([
+  AC_LANG_SOURCE([[
+#define CONCAT(a,b) a##b
+#define CONCAT2(a,b) CONCAT(a,b)
+CONCAT2(dt/,foo)
+% GMTK's comments are not compatible with cpp]])],
+  [gmtkCPP="$CPP -x assembler-with-cpp"],
+  [gmtkCPP="cpp"])
+
+# restore original environment
+CPPFLAGS=$gmtk_save_CPPFLAGS
+AC_LANG_POP([C])
+
+
+AC_ARG_WITH([cppCmd],
+            [AS_HELP_STRING([--with-cppCmd],
+               [specify C pre-processor command GMTK uses to process ASCII input files @<:@default: "gcc -E -x assembler-with-cpp" if the build cpp is "gcc -E", otherwise just "cpp"@:>@])],
+            [],
+            [with_cppCmd=$gmtkCPP])
+
+# end ticket 192 stuff
+
 AC_ARG_ENABLE([gzip],
               [AS_HELP_STRING([--disable-gzip],
                               [disable piping .gz files through gzip @<:@default: no@:>@])],
@@ -26,6 +80,7 @@ AC_ARG_ENABLE([tmpLocalPool],
               [AS_HELP_STRING([--disable-tmpLocalPool],
                               [disable use of temporary local clique value pool @<:@default: no@:>@])],
               [tmpLocalPool=${enableval}], [tempLocalPool=yes])
+
 AC_ARG_WITH([logp], 
             [AS_HELP_STRING([--with-logp],
               [select logp implementation (log, table, smart, renorm) @<:@default: log@:>@])],
@@ -39,9 +94,9 @@ AC_ARG_WITH([detBrush],
 
 AC_ARG_WITH([LZERO],
             [AS_HELP_STRING([--with-LZERO],
-              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
+              [the smallest log value that we represent (note that values > -1e16 may cause arithmetic problems (0+0 != 0) @<:@default: -1.0E17@:>@])],
 	    [],
-            [with_LZERO=(-1.0E10)])
+            [with_LZERO=(-1.0E17)])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -72,7 +127,7 @@ AC_PROG_AWK
 
 
 # Autotest suite
-AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO])
+AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO:miscSupport])
 AC_CONFIG_FILES([tests/Makefile tests/atlocal])
 
 AC_CONFIG_FILES([Makefile])

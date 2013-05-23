@@ -1,13 +1,22 @@
 #                                               -*- Autoconf -*-
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/trac/gmtk/newticket)
+AC_INIT(GMTK, 0.0, https://j.ee.washington.edu/trac/gmtk/newticket)
 : ${CXXFLAGS=""}
 AC_CONFIG_SRCDIR([mixNormalCollection.cc])
 AC_CONFIG_HEADER([ac_config.h])
 
 AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -25,6 +34,7 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 # Checks for programs
 AC_PROG_CXX
 AC_PROG_CC
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 
 # Checks for libraries.
 AC_CHECK_LIB([m], [log])

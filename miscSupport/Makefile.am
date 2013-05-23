@@ -1,10 +1,16 @@
 
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
+
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
-HGID = $(shell hg id)
-HGDATE = $(shell hg parents --template '{date|date}')
-VERSIONFLAG = -DHGID="\"$(HGID)\"" -DHGDATE="\"$(HGDATE)\""
+VERSIONFLAG = -DHGID="\"`hg id`\"" -DHGDATE="\"`hg parents --template '{date|date}'`\""
 else
 VERSIONFLAG = 
 endif
@@ -55,20 +61,27 @@ arguments.h arguments.cc \
 logp.h logp.cc \
 rand.h rand.cc \
 sArray.h sArray.cc \
+mArray.h mArray.cc \
 cArray.h cArray.cc \
 general.h general.cc \
 lineqsolve.h lineqsolve.cc \
 debug.h debug.cc \
 fileParser.h fileParser.cc \
 hash_abstract.h hash_abstract.cc \
+phipac.h \
 mul_mdmd_md.c \
 mul_mdmd_md_l0g.c \
 mul_mdmd_md_l0nf.c \
+mul_mfmf_mf.c \
+mul_mfmf_mf_l0g.c \
+mul_mfmf_mf_l0nf.c \
 eig.h eig.c \
 bin_search.cc \
 lms_filter.h lms_filter.cc \
 rls_filter.h rls_filter.cc \
 vhash_set.h
+
+libmiscSupport_a_CPPFLAGS = -DDEFAULT_CPP="\"$(GMTKCPPCMD)\""
 
 # Compilation flags for miscSupport library objects (user's CXXFLAGS will
 # be appended)
@@ -92,10 +105,12 @@ LDADD = libmiscSupport.a
 check_PROGRAMS = \
 testError \
 testBPRange \
-testArguments testLogp testRand testsArray testcArray fileParserTest \
-testHashMapList testHashTree testVHashMap testSHashSet \
-testSHashMap testVSHashMap testRLS testLMS
+testArguments testLogp testRand testsArray testcArray testmArray \
+fileParserTest testHashMapList testHashTree testVHashMap testSHashSet \
+testSHashMap testVSHashMap testRLS testLMS testLZERO testQSort
 # testVHashSet 
+
+testQSort_SOURCES = testQSort.cc
 
 # testDebug      doesn't compile?
 testError_SOURCES = error.cc error.h
@@ -108,7 +123,9 @@ testLogp_SOURCES = logp.cc logp.h
 testRand_SOURCES = rand.cc rand.h
 testsArray_SOURCES = sArray.cc sArray.h
 testcArray_SOURCES = cArray.cc cArray.h
+testmArray_SOURCES = mArray.cc mArray.h
 fileParserTest_SOURCES = fileParser.cc fileParser.h
+testLZERO_SOURCES = testLZERO.cc
 
 testHashMapList_SOURCES = hash_map_list.cc hash_map_list.h
 testHashTree_SOURCES = hash_tree.h hash_tree.cc
@@ -124,3 +141,4 @@ testLMS_SOURCES = lms_filter.cc lms_filter.h  adaptive_filter.h
 testHashDrivers: \
 testHashMapList testHashTree testVHashSet testVHashMap testSHashSet \
 testSHashMap testVSHashMap
+

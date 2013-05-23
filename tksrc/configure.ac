@@ -1,9 +1,17 @@
 #                                               -*- Autoconf -*-
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`), 
-        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+        [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
 AC_CANONICAL_HOST
@@ -12,6 +20,7 @@ AC_CONFIG_SRCDIR([GMTK_DlinkMatrix.h])
 AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -65,16 +74,21 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 
 AC_ARG_WITH([LZERO],
             [AS_HELP_STRING([--with-LZERO],
-              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
-            [],
-            [with_LZERO=(-1.0E10)])
+              [the smallest log value that we represent (note that values > -1e16 may cause arithmetic problems (0+0 != 0) @<:@default: -1.0E17@:>@])],
+	    [],
+            [with_LZERO=(-1.0E17)])
 
+badLZERO=`echo ${with_LZERO} | awk '{if ($1 > -1.0e16) {print "bad"}}'`
+if test x"$badLZERO" = x"bad"; then
+  AC_WARN([Values for LZERO greater than -1.0e16 may cause an arithmetic issue so that 0+0 != 0])
+fi 
 AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
 
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
 AM_PROG_LEX
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
@@ -127,6 +141,29 @@ if test x"$HAVE_WXWIDGETS" = x"yes"; then
    AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
 fi
 
+     AC_ARG_WITH(
+       [ps2eps],
+       [AS_HELP_STRING([--with-ps2eps],
+          [specify default ps2eps command ('no' or '--without-ps2eps' generates PostScript) @<:@default: ps2eps@:>@])],
+       [AS_IF([test "x$with_ps2eps" != "xno"],
+          [AC_DEFINE_UNQUOTED([PS2EPS_CMD], ["${with_ps2eps}"],[default ps2eps command])
+           AC_DEFINE([EPS_EXT], ["eps"], [extension for print to file])
+           AC_DEFINE([PRINT2FILE_ABBREV], ["EPS"], [abbreviation for print to file format])
+           AC_DEFINE([PRINT2FILE_FORMAT], ["Encapsulated PostScript"], [format for print to file])
+          ],
+          [AC_DEFINE([PS2EPS_CMD], ["cat"], [pass-thru raw PostScript])
+           AC_DEFINE([EPS_EXT], ["ps"], [extension for print to file])
+           AC_DEFINE([PRINT2FILE_ABBREV], ["PS"], [abbreviation for print to file format])
+           AC_DEFINE([PRINT2FILE_FORMAT], ["PostScript"], [format for print to file])
+          ])
+       ],
+       [AC_DEFINE([PS2EPS_CMD], ["ps2eps"], [default ps2eps command])
+        AC_DEFINE([EPS_EXT], ["eps"], [extension for print to file])
+        AC_DEFINE([PRINT2FILE_ABBREV], ["EPS"], [abbreviation for print to file format])
+        AC_DEFINE([PRINT2FILE_FORMAT], ["Encapsulated PostScript"], [format for print to file])
+       ]
+     )
+
 case "${host}" in
 *apple*) 
   if test x"$HAVE_WXWIDGETS" = x"yes"; then
@@ -143,6 +180,24 @@ esac
 AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])
+
+
+AC_LANG_PUSH([C++])
+hdf_check_save_LIBS=${LIBS}
+LIBS="${LIBS} -lhdf5_cpp"
+AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
+#ifndef H5_NO_NAMESPACE
+using namespace H5;
+#endif],
+[H5File file("/dev/null", H5F_ACC_RDONLY )])],
+        AC_SUBST([HAVE_HDF5],[yes]),[])
+LIBS=${hdf_check_save_LIBS}
+AC_LANG_POP([C++])
+if test x"$HAVE_HDF5" = x"yes"; then 
+  LIBS="-lhdf5_cpp $LIBS"
+  AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
+fi
+
 
 AC_ARG_WITH([detBrush],
             [AS_HELP_STRING([--with-detBrush],
@@ -164,9 +219,15 @@ grey)
   ;;
 esac
 
+dnl The dlopen() function is in the C library for *BSD and in
+dnl libdl on GLIBC-based systems
+AC_SEARCH_LIBS([dlopen], [dl dld], [], [
+  AC_MSG_ERROR([unable to find the dlopen() function])
+])
+
 # Checks for header files.
 AC_PATH_XTRA
-AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h dlfcn.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

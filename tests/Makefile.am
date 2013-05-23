@@ -1,3 +1,11 @@
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2011 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
 ##### Autotest
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
@@ -19,9 +27,48 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
              } >'$(srcdir)/package.m4'
 
 TESTSUITE = testsuite
-LOCAL_GMTK_AT = $(wildcard gmtk_test_*.at)
+LOCAL_GMTK_AT =           \
+gmtk_test_debug.at        \
+gmtk_test_newViterbi-1.at \
+gmtk_test_newViterbi-2.at \
+gmtk_test_newViterbi-3.at \
+gmtk_test_newViterbi-4.at \
+gmtk_test_ticket125.at    \
+gmtk_test_ticket127.at    \
+gmtk_test_ticket130.at    \
+gmtk_test_ticket136.at    \
+gmtk_test_ticket143.at    \
+gmtk_test_ticket149.at    \
+gmtk_test_ticket150.at    \
+gmtk_test_ticket162.at    \
+gmtk_test_ticket164.at    \
+gmtk_test_ticket166.at    \
+gmtk_test_ticket174.at    \
+gmtk_test_ticket191.at    \
+gmtk_test_ticket192.at    \
+gmtk_test_ticket213.at    \
+gmtk_test_ticket23.at     \
+gmtk_test_ticket310.at    \
+gmtk_test_ticket318.at    \
+gmtk_test_ticket320.at    \
+gmtk_test_ticket322.at    \
+gmtk_test_ticket326-1.at  \
+gmtk_test_ticket326-2.at  \
+gmtk_test_ticket326-3.at  \
+gmtk_test_ticket326-4.at  \
+gmtk_test_ticket345.at    \
+gmtk_test_ticket348.at    \
+gmtk_test_ticket357.at    \
+gmtk_test_ticket362.at    \
+gmtk_test_ticket387-1.at  \
+gmtk_test_ticket387-2.at  \
+gmtk_test_ticket398.at    \
+gmtk_test_ticket404.at    \
+gmtk_test_ticket42.at     \
+gmtk_test_ticket52.at     
+
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in \
-	     $(LOCAL_GMTK_AT)
+	     gmtk_tests.at $(LOCAL_GMTK_AT)
 
 .PHONY: gmtk_tests.at
 gmtk_tests.at:
@@ -34,7 +81,7 @@ check-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 
 installcheck-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
-	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc' \
+	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport' \
 	$(TESTSUITEFLAGS)
 
 clean-local:

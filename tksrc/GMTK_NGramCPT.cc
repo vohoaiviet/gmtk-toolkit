@@ -7,17 +7,11 @@
  * This part of the code has the implementation of class NGramCPT for
  * gmtk.  Please see GMTK_NGramCPT.h for more information.
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
  *  $Header$
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -513,7 +507,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     // of seeking to a byte offset. Note that we're only skipping
     // the \data\ line and the ngram counts, so this should not be
     // too costly unless we encounter an extremely high order model
-    long filePos = ifs->ftell();
+    gmtk_off_t filePos = ifs->ftell();
 
     unsigned j, k;
     char seps[] = " \t\r\n";

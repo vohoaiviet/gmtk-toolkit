@@ -4,6 +4,9 @@
  *  Created   : 2003-12-15 20:16:42 karim
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
+ *
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
 
  Create an initializtion .mg file for pfile_mi.cc using a simple
  k-means algorithm.  Adapted from the pfile_initmg by Jeff Bilmes
@@ -27,7 +30,7 @@
 #include "rand.h"
 //#include "spi.h"
 
-#include "GMTK_ObservationMatrix.h"
+#include "GMTK_FileSource.h"
 
 #include "pfile.h"
 //#include "parse_subset.h"
@@ -38,7 +41,7 @@
 #include "GMTK_Kmeans.h"
 
 
-void initmg(ObservationMatrix* obs_mat,
+void initmg(FileSource *obs_mat,
 	    FILE *out_fp,
 	    Range& srrng,
 	    Range& cfrrng,
@@ -91,7 +94,7 @@ void initmg(ObservationMatrix* obs_mat,
 	for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
 	  sent_no = (*srit);
 
-	  obs_mat->loadSegment(sent_no);
+	  obs_mat->openSegment(sent_no);
 	  const size_t n_frames = obs_mat->numFrames();
 
 	  if (!quiet_mode) {
@@ -187,7 +190,7 @@ void initmg(ObservationMatrix* obs_mat,
       for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
 	sent_no = (*srit);
 
-	obs_mat->loadSegment(sent_no);
+	obs_mat->openSegment(sent_no);
 	const size_t n_frames = obs_mat->numFrames();
 
 	if (!quiet_mode) {

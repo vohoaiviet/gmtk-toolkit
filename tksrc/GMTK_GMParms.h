@@ -7,15 +7,9 @@
  * 
  *  $Header$
  * 
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -51,6 +45,7 @@ class NGramCPT;
 class FNGramCPT;
 class FNGramImp;
 class VECPT;
+class DeepVECPT;
 class Vocab;
 class LatticeADT;
 class LatticeNodeCPT;
@@ -239,6 +234,10 @@ public:
   ObjectMapType veCptsMap;
   void add(VECPT*);
 
+  vector<DeepVECPT*> deepVECpts;
+  ObjectMapType deepVECptsMap;
+  void add(DeepVECPT*);
+
   /********************************************************************/
   /********************************************************************/
   /********************************************************************/
@@ -356,6 +355,7 @@ public:
   void readFNgramImps(iDataStreamFile& is, bool reset = false);
   void readLatticeAdts(iDataStreamFile& is, bool reset = false);
   void readVECpts(iDataStreamFile& is, bool reset = false);
+  void readDeepVECpts(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);
   void readMixtures(iDataStreamFile& is,bool reset = false);
@@ -512,6 +512,10 @@ private:
 // The global GM parameter object, must be
 // actually defined near where main() is defined.
 extern GMParms GM_Parms;
+
+// load & register C determinstic mapping functions as decision trees
+// from files specified by -mapX arguments
+void dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames);
 
 #endif
 
