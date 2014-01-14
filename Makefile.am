@@ -1,0 +1,33 @@
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+#
+
+EXTRA_DIST = RELEASE contrib version.sh version.info
+
+dist_bin_SCRIPTS = \
+scripts/fixTri.sh \
+scripts/generate_random_graph.pl \
+scripts/triangulateGA \
+scripts/triangulateParallel \
+scripts/triangulateTimings
+
+SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
+
+.PHONY: rc revdist datedist hgdatedist autoclean
+rc:
+	make VERSION=`cat RELEASE`.`hg id -i | tr ' ()' _` dist
+
+revdist:
+	make VERSION=`hg id | tr ' ()' _` dist
+
+datedist:
+	make VERSION=`date +"%Y-%m-%d_%H%M"` dist
+
+hgdatedist:
+	make VERSION=`date +"%Y-%m-%d"`.`hg id | tr ' ()' _` dist
+
